@@ -155,7 +155,7 @@ func (nm *networkManager) SetupAPConnection() error {
 		"ifname", "wlan0_ap",
 		"con-name", nm.status.APSSID,
 		"autoconnect", "no",
-		"ssid", "PiFi",
+		"ssid", nm.status.APSSID,
 		"mode", "ap",
 		"ipv4.method", "shared",
 		"ipv6.method", "disabled",
