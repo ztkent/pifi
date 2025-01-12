@@ -3,6 +3,7 @@ package networkmanager
 import (
 	"fmt"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -18,7 +19,9 @@ type NetworkStatus struct {
 	Connectivity string
 	WifiHW       string
 	Wifi         string
-	SignalStr    string
+	WifiSSID     string
+	APSSID       string
+	SignalStr    int32
 	Mode         string
 	IPs          NetworkIPs
 }
@@ -27,7 +30,9 @@ type NetworkManager interface {
 	GetNetworkStatus() (NetworkStatus, error)
 	SetWifiMode(mode string) error
 	SetupAPConnection() error
+
 	// FindAvailableNetworks() ([]string, error)
+	// ListWifiConnections() ([]string, error)
 }
 
 type networkManager struct {
@@ -50,8 +55,9 @@ func (nm *networkManager) GetNetworkStatus() (NetworkStatus, error) {
 		Connectivity: "unknown",
 		WifiHW:       "unknown",
 		Wifi:         "unknown",
-		SignalStr:    "unknown",
+		SignalStr:    0,
 		Mode:         "unknown",
+		APSSID:       "PiFi-AP",
 		IPs:          NetworkIPs{},
 	}
 	if err != nil {
@@ -71,6 +77,7 @@ func (nm *networkManager) GetNetworkStatus() (NetworkStatus, error) {
 		Connectivity: fields[1],
 		WifiHW:       fields[2],
 		Wifi:         fields[3],
+		WifiSSID:     nm.getWifiSSID(),
 		SignalStr:    nm.getWifiSignal(),
 		Mode:         nm.getWifiMode(),
 		IPs:          nm.getNetworkIps(),
@@ -192,11 +199,11 @@ func checkInterfaceExists(name string) bool {
 	return strings.Contains(string(output), name)
 }
 
-func (nm *networkManager) getWifiSignal() string {
+func (nm *networkManager) getWifiSignal() int32 {
 	cmd := exec.Command("nmcli", "-f", "IN-USE,SIGNAL", "dev", "wifi", "list")
 	output, err := cmd.Output()
 	if err != nil {
-		return "unknown"
+		return -1
 	}
 
 	lines := strings.Split(string(output), "\n")
@@ -204,11 +211,15 @@ func (nm *networkManager) getWifiSignal() string {
 		if strings.Contains(line, "*") {
 			fields := strings.Fields(line)
 			if len(fields) >= 2 {
-				return fields[1] + "%"
+				signal, err := strconv.ParseInt(fields[1], 10, 32)
+				if err != nil {
+					return -1
+				}
+				return int32(signal)
 			}
 		}
 	}
-	return "not connected"
+	return -1
 }
 
 func (nm *networkManager) getWifiMode() string {
@@ -332,4 +343,21 @@ func (nm *networkManager) getNetworkIps() NetworkIPs {
 	}
 
 	return status
+}
+
+func (nm *networkManager) getWifiSSID() string {
+	cmd := exec.Command("nmcli", "-t", "-f", "active,ssid", "dev", "wifi")
+	output, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+
+	lines := strings.Split(string(output), "\n")
+	for _, line := range lines {
+		fields := strings.Split(line, ":")
+		if len(fields) == 2 && fields[0] == "yes" {
+			return fields[1]
+		}
+	}
+	return ""
 }

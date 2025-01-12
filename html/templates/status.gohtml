@@ -128,6 +128,9 @@
         <span class="status-label">WiFi IP:</span>
         <span class="signal-strength {{if eq .NetworkInfo.IPs.WifiState "online"}}connected{{else}}disconnected{{end}}">
             {{.NetworkInfo.IPs.WifiIP}}
+            {{if and (eq .NetworkInfo.IPs.WifiState "online") (.NetworkInfo.WifiSSID)}}
+                ({{.NetworkInfo.WifiSSID}})
+            {{end}}
         </span>
     </div>
 
@@ -142,6 +145,9 @@
         <span class="status-label">Access Point IP:</span>
         <span class="signal-strength {{if eq .NetworkInfo.IPs.APState "online"}}connected{{else}}disconnected{{end}}">
             {{.NetworkInfo.IPs.APIP}}
+            {{if and (eq .NetworkInfo.IPs.APState "online") (.NetworkInfo.APSSID)}}
+                ({{.NetworkInfo.APSSID}})
+            {{end}}
         </span>
     </div>
 
