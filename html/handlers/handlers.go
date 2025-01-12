@@ -27,6 +27,21 @@ func SetMode(nm networkmanager.NetworkManager) http.HandlerFunc {
 	}
 }
 
+func PiFiHandler(nm networkmanager.NetworkManager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		tmpl, err := template.ParseFiles("html/templates/index.gohtml")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		err = tmpl.Execute(w, nil)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
 func StatusHandler(nm networkmanager.NetworkManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		status := StatusResponse{

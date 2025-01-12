@@ -20,13 +20,14 @@ type NetworkStatus struct {
 	Wifi         string
 	SignalStr    string
 	Mode         string
-	IP           string
+	IPs          NetworkIPs
 }
 
 type NetworkManager interface {
 	GetNetworkStatus() (NetworkStatus, error)
 	SetWifiMode(mode string) error
 	SetupAPConnection() error
+	// FindAvailableNetworks() ([]string, error)
 }
 
 type networkManager struct {
@@ -51,7 +52,7 @@ func (nm *networkManager) GetNetworkStatus() (NetworkStatus, error) {
 		Wifi:         "unknown",
 		SignalStr:    "unknown",
 		Mode:         "unknown",
-		IP:           "unknown",
+		IPs:          NetworkIPs{},
 	}
 	if err != nil {
 		return networkStatus, err
@@ -72,7 +73,7 @@ func (nm *networkManager) GetNetworkStatus() (NetworkStatus, error) {
 		Wifi:         fields[3],
 		SignalStr:    nm.getWifiSignal(),
 		Mode:         nm.getWifiMode(),
-		IP:           nm.getIP(),
+		IPs:          nm.getNetworkIps(),
 	}
 	nm.status = networkStatus
 	return networkStatus, nil
@@ -143,18 +144,18 @@ func (nm *networkManager) verifyAPConnection() error {
 }
 
 func (nm *networkManager) SetupAPConnection() error {
+	// Create virtual interface, if it doesn't exist
+	if !checkInterfaceExists("wlan0_ap") {
+		cmd := exec.Command("iw", "dev", "wlan0", "interface", "add", "wlan0_ap", "type", "__ap")
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to create virtual interface: %v", err)
+		}
+	}
+
 	// Check if AP connection already exists
 	cmd := exec.Command("nmcli", "connection", "show", "PiFi-AP")
 	if err := cmd.Run(); err == nil {
 		return nil
-	}
-
-	// Create virtual interface, if it doesn't exist
-	if !checkInterfaceExists("wlan0_ap") {
-		cmd = exec.Command("iw", "dev", "wlan0", "interface", "add", "wlan0_ap", "type", "__ap")
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed to create virtual interface: %v", err)
-		}
 	}
 
 	// Create AP connection with required settings
@@ -230,7 +231,7 @@ func (nm *networkManager) getWifiMode() string {
 	return "inactive"
 }
 
-func (nm *networkManager) getIP() string {
+func (nm *networkManager) getWifiIP() string {
 	cmd := exec.Command("nmcli", "-g", "IP4.ADDRESS", "dev", "show", "wlan0")
 	output, err := cmd.Output()
 	if err != nil {
@@ -248,4 +249,87 @@ func (nm *networkManager) getIP() string {
 	}
 
 	return ip
+}
+
+func (nm *networkManager) getEthernetIP() string {
+	cmd := exec.Command("nmcli", "-g", "IP4.ADDRESS", "dev", "show", "eth0")
+	output, err := cmd.Output()
+	if err != nil {
+		return "not connected"
+	}
+
+	ip := strings.TrimSpace(string(output))
+	if ip == "" {
+		return "not connected"
+	}
+
+	// Remove CIDR notation if present
+	if strings.Contains(ip, "/") {
+		ip = strings.Split(ip, "/")[0]
+	}
+
+	return ip
+}
+
+func (nm *networkManager) getAPIP() string {
+	cmd := exec.Command("nmcli", "-g", "IP4.ADDRESS", "dev", "show", "wlan0_ap")
+	output, err := cmd.Output()
+	if err != nil {
+		return "not connected"
+	}
+
+	ip := strings.TrimSpace(string(output))
+	if ip == "" {
+		return "not connected"
+	}
+
+	// Remove CIDR notation if present
+	if strings.Contains(ip, "/") {
+		ip = strings.Split(ip, "/")[0]
+	}
+
+	return ip
+}
+
+type NetworkIPs struct {
+	WifiIP     string
+	WifiState  string
+	EthernetIP string
+	EthState   string
+	APIP       string
+	APState    string
+}
+
+func (nm *networkManager) getNetworkIps() NetworkIPs {
+	status := NetworkIPs{
+		WifiState: "offline",
+		EthState:  "offline",
+		APState:   "offline",
+	}
+
+	// Check WiFi
+	if output, err := exec.Command("nmcli", "-g", "IP4.ADDRESS", "dev", "show", "wlan0").Output(); err == nil {
+		if ip := strings.TrimSpace(string(output)); ip != "" {
+			status.WifiIP = strings.Split(ip, "/")[0]
+			status.WifiState = "online"
+		}
+	}
+
+	// Check Ethernet
+	if output, err := exec.Command("nmcli", "-g", "IP4.ADDRESS", "dev", "show", "eth0").Output(); err == nil {
+		if ip := strings.TrimSpace(string(output)); ip != "" {
+			status.EthernetIP = strings.Split(ip, "/")[0]
+			status.EthState = "online"
+		}
+	}
+
+	// Check AP
+	if output, err := exec.Command("nmcli", "-g", "IP4.ADDRESS", "dev", "show", "wlan0_ap").Output(); err == nil {
+		if ip := strings.TrimSpace(string(output)); ip != "" {
+			status.APIP = strings.Split(ip, "/")[0]
+			status.APState = "online"
+		}
+	}
+
+	return status
 }

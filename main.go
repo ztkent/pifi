@@ -21,19 +21,19 @@ func main() {
 	}
 
 	r := mux.NewRouter()
-	r.HandleFunc("/", handlers.StatusHandler(nm)).Methods("GET")
+	r.HandleFunc("/", handlers.PiFiHandler(nm)).Methods("GET")
 	r.HandleFunc("/status", handlers.StatusHandler(nm)).Methods("GET")
 	r.HandleFunc("/setmode", handlers.SetMode(nm)).Methods("POST")
 
 	srv := &http.Server{
 		Handler:      r,
-		Addr:         ":8080",
+		Addr:         "0.0.0.0:8080",
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
 
 	go func() {
-		log.Printf("Server starting on http://localhost%s", srv.Addr)
+		log.Printf("Server starting on http://%s", srv.Addr)
 		if err := srv.ListenAndServe(); err != nil {
 			log.Fatal(err)
 		}

@@ -1,172 +1,165 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>PiFi Status</title>
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-            background-color: #f5f6fa;
-        }
-        .status-card {
-            border: 1px solid #e1e1e1;
-            border-radius: 12px;
-            padding: 30px;
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .status-item {
-            margin: 15px 0;
-            padding: 10px;
-            border-bottom: 1px solid #f1f1f1;
-        }
-        .status-item:last-child {
-            border-bottom: none;
-        }
-        .status-label {
-            font-weight: 600;
-            color: #2d3436;
-            display: inline-block;
-            width: 140px;
-        }
-        .connected {
-            color: #27ae60;
-            font-weight: 600;
-        }
-        .disconnected {
-            color: #e74c3c;
-            font-weight: 600;
-        }
-        .enabled {
-            color: #2980b9;
-            font-weight: 600;
-        }
-        .disabled {
-            color: #95a5a6;
-            font-weight: 600;
-        }
-        h1 {
-            color: #2c3e50;
-            margin-bottom: 25px;
-            text-align: center;
-        }
-        .timestamp {
-            color: #7f8c8d;
-            font-size: 0.9em;
-        }
-        .version {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            color: #95a5a6;
-            font-size: 0.8em;
-        }
-        .signal-strength {
-            font-weight: 600;
-        }
-        .signal-excellent {
-            color: #27ae60;
-        }
-        .signal-good {
-            color: #2ecc71;
-        }
-        .signal-fair {
-            color: #f1c40f;
-        }
-        .signal-poor {
-            color: #e67e22;
-        }
-        .signal-none {
-            color: #e74c3c;
-        }
-        .mode-select {
-            padding: 8px;
-            border-radius: 6px;
-            border: 1px solid #e1e1e1;
-            background-color: white;
-            color: #2d3436;
-            font-size: 14px;
-            width: 120px;
-        }
-        
-        .mode-select:focus {
-            outline: none;
-            border-color: #3498db;
-            box-shadow: 0 0 0 2px rgba(52,152,219,0.2);
-        }
-        
-        .mode-select option {
-            padding: 8px;
-        }
-    </style>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 40px;
+        background-color: #f5f6fa;
+    }
+    .status-card {
+        border: 1px solid #e1e1e1;
+        border-radius: 12px;
+        padding: 30px;
+        max-width: 800px;
+        margin: 0 auto;
+        background-color: white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .status-item {
+        margin: 15px 0;
+        padding: 10px;
+        border-bottom: 1px solid #f1f1f1;
+    }
+    .status-item:last-child {
+        border-bottom: none;
+    }
+    .status-label {
+        font-weight: 600;
+        color: #2d3436;
+        display: inline-block;
+        width: 140px;
+    }
+    .connected {
+        color: #27ae60;
+        font-weight: 600;
+    }
+    .disconnected {
+        color: #e74c3c;
+        font-weight: 600;
+    }
+    .enabled {
+        color: #2980b9;
+        font-weight: 600;
+    }
+    .disabled {
+        color: #95a5a6;
+        font-weight: 600;
+    }
+    h1 {
+        color: #2c3e50;
+        margin-bottom: 25px;
+        text-align: center;
+    }
+    .timestamp {
+        color: #7f8c8d;
+        font-size: 0.9em;
+    }
+    .version {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        color: #95a5a6;
+        font-size: 0.8em;
+    }
+    .signal-strength {
+        font-weight: 600;
+    }
+    .signal-excellent {
+        color: #27ae60;
+    }
+    .signal-good {
+        color: #2ecc71;
+    }
+    .signal-fair {
+        color: #f1c40f;
+    }
+    .signal-poor {
+        color: #e67e22;
+    }
+    .signal-none {
+        color: #e74c3c;
+    }
+    .mode-select {
+        padding: 8px;
+        border-radius: 6px;
+        border: 1px solid #e1e1e1;
+        background-color: white;
+        color: #2d3436;
+        font-size: 14px;
+        width: 120px;
+    }
+    
+    .mode-select:focus {
+        outline: none;
+        border-color: #3498db;
+        box-shadow: 0 0 0 2px rgba(52,152,219,0.2);
+    }
+    
+    .mode-select option {
+        padding: 8px;
+    }
+</style>
 </head>
 <body>
-    <div class="status-card">
-        <span class="version">v{{.Version}}</span>
-        <h1>PiFi Status</h1>
-        
-        <div class="status-item">
-            <span class="status-label">Network State:</span>
-            <span class="{{if eq .NetworkInfo.State "connected"}}connected{{else}}disconnected{{end}}">
-                {{.NetworkInfo.State}}
-            </span>
-        </div>
-
-        <div class="status-item">
-            <span class="status-label">Connectivity:</span>
-            <span class="{{if eq .NetworkInfo.Connectivity "full"}}connected{{else}}disconnected{{end}}">
-                {{.NetworkInfo.Connectivity}}
-            </span>
-        </div>
-
-        <div class="status-item">
-            <span class="status-label">WiFi Hardware:</span>
-            <span class="{{if eq .NetworkInfo.WifiHW "enabled"}}enabled{{else}}disabled{{end}}">
-                {{.NetworkInfo.WifiHW}}
-            </span>
-        </div>
-
-        <div class="status-item">
-            <span class="status-label">WiFi:</span>
-            <span class="{{if eq .NetworkInfo.Wifi "enabled"}}enabled{{else}}disabled{{end}}">
-                {{.NetworkInfo.Wifi}}
-            </span>
-        </div>
-
-        <div class="status-item">
-            <span class="status-label">Device IP:</span>
-            <span class="signal-strength">
-                {{.NetworkInfo.IP}}
-            </span>
-        </div>
-
-        <div class="status-item">
-            <span class="status-label">Network Mode:</span>
-            <select class="mode-select"
-                    name="mode"
-                    hx-post="/setmode"
-                    hx-trigger="change"
-                    hx-swap="none"
-                    hx-indicator=".mode-select">
-                <option value="client" {{if eq .NetworkInfo.Mode "client"}}selected{{end}}>Client</option>
-                <option value="dual" {{if eq .NetworkInfo.Mode "dual"}}selected{{end}}>Dual</option>
-            </select>
-        </div>
-        
-        <div class="status-item">
-            <span class="status-label">Signal Strength:</span>
-            <span class="signal-strength">
-                {{.NetworkInfo.SignalStr}}
-            </span>
-        </div>
-
-        <div class="status-item">
-            <span class="status-label">Last Updated:</span>
-            <span class="timestamp">{{.Timestamp.Format "2006-01-02 15:04:05"}}</span>
-        </div>
+<div class="status-card">
+    <span class="version">v{{.Version}}</span>
+    <h1>PiFi Status</h1>
+    
+    <div class="status-item">
+        <span class="status-label">Network State:</span>
+        <span class="{{if eq .NetworkInfo.State "connected"}}connected{{else}}disconnected{{end}}">
+            {{.NetworkInfo.State}}
+        </span>
     </div>
-</body>
-</html>
+
+    <div class="status-item">
+        <span class="status-label">Connectivity:</span>
+        <span class="{{if eq .NetworkInfo.Connectivity "full"}}connected{{else}}disconnected{{end}}">
+            {{.NetworkInfo.Connectivity}}
+        </span>
+    </div>
+
+    <div class="status-item">
+        <span class="status-label">WiFi:</span>
+        <span class="{{if eq .NetworkInfo.Wifi "enabled"}}enabled{{else}}disabled{{end}}">
+            {{.NetworkInfo.Wifi}}
+        </span>
+    </div>
+
+    <div class="status-item">
+        <span class="status-label">WiFi IP:</span>
+        <span class="signal-strength {{if eq .NetworkInfo.IPs.WifiState "online"}}connected{{else}}disconnected{{end}}">
+            {{.NetworkInfo.IPs.WifiIP}}
+        </span>
+    </div>
+
+    <div class="status-item">
+        <span class="status-label">Ethernet IP:</span>
+        <span class="signal-strength {{if eq .NetworkInfo.IPs.EthState "online"}}connected{{else}}disconnected{{end}}">
+            {{.NetworkInfo.IPs.EthernetIP}}
+        </span>
+    </div>
+
+    <div class="status-item">
+        <span class="status-label">Access Point IP:</span>
+        <span class="signal-strength {{if eq .NetworkInfo.IPs.APState "online"}}connected{{else}}disconnected{{end}}">
+            {{.NetworkInfo.IPs.APIP}}
+        </span>
+    </div>
+
+    <div class="status-item">
+        <span class="status-label">Network Mode:</span>
+        <select class="mode-select"
+                name="mode"
+                hx-post="/setmode"
+                hx-trigger="change"
+                hx-swap="none"
+                hx-indicator=".mode-select">
+            <option value="client" {{if eq .NetworkInfo.Mode "client"}}selected{{end}}>Client</option>
+            <option value="dual" {{if eq .NetworkInfo.Mode "dual"}}selected{{end}}>Dual</option>
+        </select>
+    </div>
+
+    <div class="status-item">
+        <span class="status-label">Last Updated:</span>
+        <span class="timestamp">{{.Timestamp.Format "2006-01-02 15:04:05"}}</span>
+    </div>
+</div>
