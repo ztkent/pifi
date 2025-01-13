@@ -23,7 +23,13 @@ func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/", handlers.PiFiHandler(nm)).Methods("GET")
 	r.HandleFunc("/status", handlers.StatusHandler(nm)).Methods("GET")
+	r.HandleFunc("/network", handlers.NetworksHandler(nm)).Methods("GET")
 	r.HandleFunc("/setmode", handlers.SetMode(nm)).Methods("POST")
+	r.HandleFunc("/add-network", handlers.ModifyNetworkHandler(nm)).Methods("POST")
+
+	// r.HandleFunc("/remove-network", handlers.ModifyNetworkHandler(nm)).Methods("POST")
+	// r.HandleFunc("/autoconnect-network", handlers.ModifyNetworkHandler(nm)).Methods("POST")
+	// r.HandleFunc("/connect", handlers.ModifyNetworkHandler(nm)).Methods("POST")
 
 	srv := &http.Server{
 		Handler:      r,

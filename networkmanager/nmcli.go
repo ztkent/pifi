@@ -144,15 +144,6 @@ func getAPIP() string {
 	return ip
 }
 
-type NetworkIPs struct {
-	WifiIP     string
-	WifiState  string
-	EthernetIP string
-	EthState   string
-	APIP       string
-	APState    string
-}
-
 func getNetworkIps() NetworkIPs {
 	status := NetworkIPs{
 		WifiState: "offline",

@@ -7,7 +7,9 @@
         body {
             margin: 0;
             padding: 0;
-            background-color: #f5f6fa;
+        }
+        .bg {
+            background-color:rgb(161, 160, 160);
         }
         .container {
             min-height: 100vh;
@@ -15,13 +17,107 @@
             align-items: center;
             justify-content: center;
         }
+        .status-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0px;
+            margin: 20px;
+        }
+        .error-popup {
+            display: none;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #ff4757;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        
+        .error-popup.show {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        .close-btn {
+            float: right;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+                .success-popup {
+            background: #2ecc71;
+        }
+        .error-popup {
+            background: #ff4757;
+        }
+        .popup {
+            display: none;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        .popup.show {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
     </style>
 </head>
-<body>
-    <div class="container"
-         hx-get="/status"
-         hx-trigger="load, every 10s"
-         hx-swap="innerHTML">
+    <div id="error-popup" class="error-popup">
+        <span class="close-btn" onclick="this.parentElement.classList.remove('show')">×</span>
+        <span id="error-message"></span>
+    </div>
+    <div id="message-popup" class="popup">
+        <span class="close-btn" onclick="this.parentElement.classList.remove('show')">×</span>
+        <span id="message-text"></span>
+    </div>
+    <script>
+        document.body.addEventListener('htmx:responseError', function(evt) {
+            const popup = document.getElementById('error-popup');
+            const message = document.getElementById('error-message');
+            message.textContent = evt.detail.error || 'An error occurred';
+            popup.classList.add('show');
+            setTimeout(() => popup.classList.remove('show'), 5000);
+        });
+        document.body.addEventListener('htmx:afterRequest', function(evt) {
+            if (evt.detail.pathInfo.requestPath === '/add-network') {
+                const popup = document.getElementById('message-popup');
+                const message = document.getElementById('message-text');
+                if (evt.detail.successful) {
+                    popup.classList.add('success-popup');
+                    message.textContent = 'Network configuration saved';
+                    popup.classList.add('show');
+                    setTimeout(() => {
+                        popup.classList.remove('show');
+                        popup.classList.remove('success-popup', 'error-popup');
+                    }, 5000);
+                    htmx.trigger('.container[hx-get="/network"]', 'networkupdate');
+                } 
+            }
+        });
+    </script>
+<body class="bg">
+    <div class="status-row">
+        <div class="container"
+             hx-get="/status"
+             hx-trigger="load, every 10s"
+             hx-swap="innerHTML">
+        </div>
+        <div class="container"
+             hx-get="/network"
+             hx-trigger="load, networkupdate"
+             hx-swap="innerHTML">
+        </div>
     </div>
 </body>
 </html>

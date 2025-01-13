@@ -16,6 +16,12 @@ type StatusResponse struct {
 	NetworkInfo networkmanager.NetworkStatus
 }
 
+type NetworkResponse struct {
+	AvailableNetworks  []string                        `json:"availableNetworks"`
+	ConfiguredNetworks []networkmanager.ConnectionInfo `json:"configuredNetworks"`
+	Timestamp          time.Time                       `json:"timestamp"`
+}
+
 func SetMode(nm networkmanager.NetworkManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
@@ -61,6 +67,48 @@ func StatusHandler(nm networkmanager.NetworkManager) http.HandlerFunc {
 			return
 		}
 		err = tmpl.Execute(w, status)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+func NetworksHandler(nm networkmanager.NetworkManager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		availableNetworks, err := nm.FindAvailableNetworks()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		configuredNetworks, err := nm.GetConfiguredConnections()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		tmpl, err := template.ParseFiles("html/templates/network.gohtml")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		NetworkResponse := NetworkResponse{
+			AvailableNetworks:  availableNetworks,
+			ConfiguredNetworks: configuredNetworks,
+			Timestamp:          time.Now(),
+		}
+		err = tmpl.Execute(w, NetworkResponse)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+func ModifyNetworkHandler(nm networkmanager.NetworkManager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		r.ParseForm()
+		err := nm.ModifyNetworkConnection(r.Form.Get("ssid"), r.Form.Get("password"), false)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

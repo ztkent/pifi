@@ -98,11 +98,9 @@
     }
 </style>
 </head>
-<body>
 <div class="status-card">
     <span class="version">v{{.Version}}</span>
-    <h1>PiFi Status</h1>
-    
+    <h1>Status</h1>
     <div class="status-item">
         <span class="status-label">Network State:</span>
         <span class="{{if eq .NetworkInfo.State "connected"}}connected{{else}}disconnected{{end}}">
