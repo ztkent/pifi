@@ -124,31 +124,10 @@ func getEthernetIP() string {
 	return ip
 }
 
-func getAPIP() string {
-	cmd := exec.Command("nmcli", "-g", "IP4.ADDRESS", "dev", "show", "wlan0_ap")
-	output, err := cmd.Output()
-	if err != nil {
-		return "not connected"
-	}
-
-	ip := strings.TrimSpace(string(output))
-	if ip == "" {
-		return "not connected"
-	}
-
-	// Remove CIDR notation if present
-	if strings.Contains(ip, "/") {
-		ip = strings.Split(ip, "/")[0]
-	}
-
-	return ip
-}
-
 func getNetworkIps() NetworkIPs {
 	status := NetworkIPs{
 		WifiState: "offline",
 		EthState:  "offline",
-		APState:   "offline",
 	}
 
 	// Check WiFi
@@ -166,14 +145,5 @@ func getNetworkIps() NetworkIPs {
 			status.EthState = "online"
 		}
 	}
-
-	// Check AP
-	if output, err := exec.Command("nmcli", "-g", "IP4.ADDRESS", "dev", "show", "wlan0_ap").Output(); err == nil {
-		if ip := strings.TrimSpace(string(output)); ip != "" {
-			status.APIP = strings.Split(ip, "/")[0]
-			status.APState = "online"
-		}
-	}
-
 	return status
 }
