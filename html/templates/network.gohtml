@@ -8,8 +8,7 @@
         border: 1px solid #e1e1e1;
         border-radius: 12px;
         padding: 30px;
-        min-width: 500px;
-        max-width: 800px;
+        width: 400px;
         margin: 0 auto;
         background-color: white;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -82,8 +81,12 @@
                     name="ssid"
                     onchange="togglePassword(this.value)">
                 <option value="">Select Network...</option>
-                {{range .AvailableNetworks}}
-                    <option value="{{.}}">{{.}}</option>
+                {{if .AvailableNetworks}}
+                    {{range .AvailableNetworks}}
+                        <option value="{{.}}">{{.}}</option>
+                    {{end}}
+                {{else}}
+                    <option value="" disabled>No networks found</option>
                 {{end}}
             </select>
             <div id="passwordField" style="display: none;" class="network-item">
@@ -103,8 +106,12 @@
                 name="network"
                 onchange="toggleNetworkOptions(this.value)">
             <option value="">Select Network...</option>
-            {{range .ConfiguredNetworks}}
-                <option value="{{.SSID}}">{{.SSID}}</option>
+            {{if .ConfiguredNetworks}}
+                {{range .ConfiguredNetworks}}
+                    <option value="{{.SSID}}">{{.SSID}}</option>
+                {{end}}
+            {{else}}
+                <option value="" disabled>No networks found</option>
             {{end}}
         </select>
         <div id="networkOptions" style="display: none;" class="network-item">

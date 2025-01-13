@@ -8,7 +8,6 @@ import (
 )
 
 const (
-	ModeDual   = "dual"
 	ModeClient = "client"
 	ModeAP     = "ap"
 )
@@ -99,12 +98,8 @@ func (nm *networkManager) GetNetworkStatus() (NetworkStatus, error) {
 	return networkStatus, nil
 }
 
-// Switches between client, dual and AP modes
+// Switches between client and AP modes
 func (nm *networkManager) SetWifiMode(mode string) error {
-	if mode == ModeAP {
-		return fmt.Errorf("switching to AP-only mode is disabled for safety")
-	}
-
 	// Get current active connections
 	cmd := exec.Command("nmcli", "-t", "-f", "NAME,TYPE,DEVICE", "con", "show", "--active")
 	output, err := cmd.Output()
@@ -115,9 +110,9 @@ func (nm *networkManager) SetWifiMode(mode string) error {
 	hasAP := strings.Contains(string(output), nm.status.APSSID)
 	hasClient := strings.Contains(string(output), "wifi") || strings.Contains(string(output), "802-11-wireless")
 	switch mode {
-	case ModeDual:
+	case ModeAP:
 		if !hasClient {
-			return fmt.Errorf("must have active client connection for dual mode")
+			return fmt.Errorf("must have active client connection for ap mode")
 		}
 		if !hasAP {
 			err = verifyAPConnection(nm.status.APSSID)
@@ -128,6 +123,11 @@ func (nm *networkManager) SetWifiMode(mode string) error {
 			output, err := cmd.CombinedOutput()
 			if err != nil {
 				return fmt.Errorf("failed to create AP connection: %v\nOutput: %s", err, output)
+			}
+			time.Sleep(time.Second)
+			newMode := getWifiMode(nm.status.APSSID)
+			if newMode != "ap" {
+				return fmt.Errorf("mode change verification failed")
 			}
 		}
 	case ModeClient:
@@ -140,28 +140,20 @@ func (nm *networkManager) SetWifiMode(mode string) error {
 		if !hasClient {
 			return fmt.Errorf("no active client connection")
 		}
+		time.Sleep(time.Second)
+		newMode := getWifiMode(nm.status.APSSID)
+		if newMode != "inactive" && newMode != "client" {
+			return fmt.Errorf("mode change verification failed")
+		}
 	default:
 		return fmt.Errorf("unsupported mode: %s", mode)
 	}
 
-	time.Sleep(time.Second)
-	newMode := getWifiMode(nm.status.APSSID)
-	if newMode != mode {
-		return fmt.Errorf("mode change verification failed")
-	}
 	return nil
 }
 
 // Creates a new AP connection for wlan0 if it doesn't exist
 func (nm *networkManager) SetupAPConnection() error {
-	// Create virtual interface, if it doesn't exist
-	if !checkInterfaceExists("wlan0_ap") {
-		cmd := exec.Command("iw", "dev", "wlan0", "interface", "add", "wlan0_ap", "type", "__ap")
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed to create virtual interface: %v", err)
-		}
-	}
-
 	// Check if AP connection already exists
 	cmd := exec.Command("nmcli", "connection", "show", nm.status.APSSID)
 	if err := cmd.Run(); err == nil {
@@ -171,7 +163,7 @@ func (nm *networkManager) SetupAPConnection() error {
 	// Create AP connection with required settings
 	cmd = exec.Command("nmcli", "connection", "add",
 		"type", "wifi",
-		"ifname", "wlan0_ap",
+		"ifname", "wlan0",
 		"con-name", nm.status.APSSID,
 		"autoconnect", "no",
 		"ssid", nm.status.APSSID,
@@ -195,9 +187,6 @@ func (nm *networkManager) SetupAPConnection() error {
 
 // Scan for available networks and returns a list of SSIDs
 func (nm *networkManager) FindAvailableNetworks() ([]string, error) {
-	if nm.status.Mode == "ap" {
-		return nil, fmt.Errorf("cannot scan networks in AP mode")
-	}
 	// Perform a network rescan
 	scanCmd := exec.Command("nmcli", "device", "wifi", "rescan")
 	if err := scanCmd.Run(); err != nil {

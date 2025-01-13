@@ -58,7 +58,7 @@ func getWifiMode(apName string) string {
 	hasClient := strings.Contains(string(output), "wifi") || strings.Contains(string(output), "802-11-wireless")
 
 	if hasAP && hasClient {
-		return ModeDual
+		return ModeAP
 	} else if hasClient {
 		return ModeClient
 	} else if hasAP {
