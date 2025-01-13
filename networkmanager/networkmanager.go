@@ -35,7 +35,6 @@ type NetworkIPs struct {
 }
 
 type ConnectionInfo struct {
-	NMName   string
 	SSID     string
 	Password string
 }
@@ -51,7 +50,9 @@ type NetworkManager interface {
 	FindAvailableNetworks() ([]string, error)
 	GetConfiguredConnections() ([]ConnectionInfo, error)
 	ModifyNetworkConnection(ssid, password string, autoConnect bool) error
-	// RemoveNetworkConnection(ssid string) error
+	RemoveNetworkConnection(ssid string) error
+	SetAutoConnectConnection(ssid string, autoConnect bool) error
+	ConnectNetwork(ssid string) error
 }
 
 type networkManager struct {
@@ -124,8 +125,9 @@ func (nm *networkManager) SetWifiMode(mode string) error {
 				return err
 			}
 			cmd = exec.Command("nmcli", "con", "up", nm.status.APSSID)
-			if err := cmd.Run(); err != nil {
-				return fmt.Errorf("failed to enable AP mode: %v", err)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				return fmt.Errorf("failed to create AP connection: %v\nOutput: %s", err, output)
 			}
 		}
 	case ModeClient:
@@ -196,7 +198,6 @@ func (nm *networkManager) FindAvailableNetworks() ([]string, error) {
 	if nm.status.Mode == "ap" {
 		return nil, fmt.Errorf("cannot scan networks in AP mode")
 	}
-
 	// Perform a network rescan
 	scanCmd := exec.Command("nmcli", "device", "wifi", "rescan")
 	if err := scanCmd.Run(); err != nil {
@@ -243,21 +244,11 @@ func (nm *networkManager) GetConfiguredConnections() ([]ConnectionInfo, error) {
 		fields := strings.Split(line, ":")
 		if len(fields) >= 2 && fields[1] == "802-11-wireless" {
 			connName := fields[0]
-			ssidCmd := exec.Command("nmcli", "-t", "-f", "802-11-wireless.ssid", "connection", "show", connName)
-			ssidOutput, err := ssidCmd.Output()
-			if err != nil {
-				continue
-			}
-			ssid := strings.TrimSpace(string(ssidOutput))
-			if ssid == "" {
-				continue
-			}
 			pskCmd := exec.Command("nmcli", "-t", "-f", "802-11-wireless-security.psk", "connection", "show", connName)
 			pskOutput, _ := pskCmd.Output()
 			password := strings.TrimSpace(string(pskOutput))
 			connections = append(connections, ConnectionInfo{
-				NMName:   connName,
-				SSID:     ssid,
+				SSID:     connName,
 				Password: password,
 			})
 		}
@@ -268,48 +259,83 @@ func (nm *networkManager) GetConfiguredConnections() ([]ConnectionInfo, error) {
 
 // Modify a connection if it exists, otherwise create a new one
 func (nm *networkManager) ModifyNetworkConnection(ssid, password string, autoConnect bool) error {
+	checkCmd := exec.Command("nmcli", "connection", "show", ssid)
+	if err := checkCmd.Run(); err == nil {
+		// Connection exists - modify it
+		args := []string{"connection", "modify", ssid}
+		if password != "" {
+			args = append(args,
+				"802-11-wireless-security.key-mgmt", "wpa-psk",
+				"802-11-wireless-security.psk", password)
+		}
+		args = append(args, "connection.autoconnect",
+			map[bool]string{true: "yes", false: "no"}[autoConnect])
+
+		cmd := exec.Command("nmcli", args...)
+		if output, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("failed to modify connection: %v\nOutput: %s", err, output)
+		}
+		return nil
+	}
+
+	// Connection doesn't exist - create new
+	args := []string{
+		"connection", "add",
+		"type", "wifi",
+		"ifname", "wlan0",
+		"con-name", ssid,
+		"autoconnect", map[bool]string{true: "yes", false: "no"}[autoConnect],
+		"ssid", ssid,
+	}
+
+	if password != "" {
+		args = append(args,
+			"802-11-wireless-security.key-mgmt", "wpa-psk",
+			"802-11-wireless-security.psk", password)
+	}
+
+	cmd := exec.Command("nmcli", args...)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to create connection: %v\nOutput: %s", err, output)
+	}
+
+	return nil
+}
+
+// Remove a saved connection by name
+func (nm *networkManager) RemoveNetworkConnection(ssid string) error {
+	cmd := exec.Command("nmcli", "connection", "delete", ssid)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to delete connection: %v", err)
+	}
+	return nil
+}
+
+// Set autoconnect for a saved connection by name
+func (nm *networkManager) SetAutoConnectConnection(ssid string, autoConnect bool) error {
 	autoConnectStr := "no"
 	if autoConnect {
 		autoConnectStr = "yes"
 	}
-	cmd := exec.Command("nmcli", "connection", "show", ssid)
-	if err := cmd.Run(); err == nil {
-		cmd = exec.Command("nmcli", "connection", "modify", ssid,
-			"802-11-wireless-security.psk", password,
-		)
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed to modify connection: %v", err)
-		}
-	} else {
-		if password == "" {
-			cmd = exec.Command("nmcli", "connection", "add",
-				"type", "wifi",
-				"ifname", "wlan0",
-				"con-name", ssid,
-				"autoconnect", autoConnectStr,
-				"ssid", ssid,
-			)
-			if err := cmd.Run(); err != nil {
-				return fmt.Errorf("failed to create connection: %v", err)
-			}
-		} else {
-			cmd = exec.Command("nmcli", "connection", "add",
-				"type", "wifi",
-				"ifname", "wlan0",
-				"con-name", ssid,
-				"autoconnect", autoConnectStr,
-				"ssid", ssid,
-				"wifi-sec.key-mgmt", "wpa-psk",
-				"wifi-sec.psk", password,
-				"802-11-wireless-security.key-mgmt", "wpa-psk",
-				"802-11-wireless-security.psk", password,
-			)
 
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				return fmt.Errorf("failed to create connection: %v\nOutput: %s", err, output)
-			}
-		}
+	cmd := exec.Command("nmcli", "connection", "modify", ssid,
+		"connection.autoconnect", autoConnectStr)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to set autoconnect for %s: %v\nOutput: %s",
+			ssid, err, output)
+	}
+
+	return nil
+}
+
+// Connect to a saved network by name
+func (nm *networkManager) ConnectNetwork(ssid string) error {
+	cmd := exec.Command("nmcli", "connection", "up", ssid)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to connect to %s: %v\nOutput: %s", ssid, err, output)
 	}
 	return nil
 }

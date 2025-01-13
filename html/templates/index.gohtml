@@ -73,39 +73,14 @@
         }
     </style>
 </head>
-    <div id="error-popup" class="error-popup">
-        <span class="close-btn" onclick="this.parentElement.classList.remove('show')">×</span>
-        <span id="error-message"></span>
-    </div>
-    <div id="message-popup" class="popup">
-        <span class="close-btn" onclick="this.parentElement.classList.remove('show')">×</span>
-        <span id="message-text"></span>
-    </div>
-    <script>
-        document.body.addEventListener('htmx:responseError', function(evt) {
-            const popup = document.getElementById('error-popup');
-            const message = document.getElementById('error-message');
-            message.textContent = evt.detail.error || 'An error occurred';
-            popup.classList.add('show');
-            setTimeout(() => popup.classList.remove('show'), 5000);
-        });
-        document.body.addEventListener('htmx:afterRequest', function(evt) {
-            if (evt.detail.pathInfo.requestPath === '/add-network') {
-                const popup = document.getElementById('message-popup');
-                const message = document.getElementById('message-text');
-                if (evt.detail.successful) {
-                    popup.classList.add('success-popup');
-                    message.textContent = 'Network configuration saved';
-                    popup.classList.add('show');
-                    setTimeout(() => {
-                        popup.classList.remove('show');
-                        popup.classList.remove('success-popup', 'error-popup');
-                    }, 5000);
-                    htmx.trigger('.container[hx-get="/network"]', 'networkupdate');
-                } 
-            }
-        });
-    </script>
+<div id="error-popup" class="error-popup">
+    <span class="close-btn" onclick="this.parentElement.classList.remove('show')">×</span>
+    <span id="error-message"></span>
+</div>
+<div id="message-popup" class="popup">
+    <span class="close-btn" onclick="this.parentElement.classList.remove('show')">×</span>
+    <span id="message-text"></span>
+</div>
 <body class="bg">
     <div class="status-row">
         <div class="container"
@@ -121,3 +96,79 @@
     </div>
 </body>
 </html>
+<script>
+    document.body.addEventListener('htmx:responseError', function(evt) {
+        const popup = document.getElementById('error-popup');
+        const message = document.getElementById('error-message');
+        message.textContent = evt.detail.error || 'An error occurred';
+        popup.classList.add('show');
+        setTimeout(() => popup.classList.remove('show'), 5000);
+    });
+    document.body.addEventListener('htmx:afterRequest', function(evt) {
+        if (evt.detail.pathInfo.requestPath === '/add-network') {
+            const popup = document.getElementById('message-popup');
+            const message = document.getElementById('message-text');
+            if (evt.detail.successful) {
+                popup.classList.add('success-popup');
+                message.textContent = 'Network configuration saved';
+                popup.classList.add('show');
+                setTimeout(() => {
+                    popup.classList.remove('show');
+                    popup.classList.remove('success-popup', 'error-popup');
+                }, 5000);
+                htmx.trigger('.container[hx-get="/network"]', 'networkupdate');
+            } 
+        } else if (evt.detail.pathInfo.requestPath === '/remove-network') {
+            const popup = document.getElementById('message-popup');
+            const message = document.getElementById('message-text');
+            if (evt.detail.successful) {
+                popup.classList.add('success-popup');
+                message.textContent = 'Network deleted';
+                popup.classList.add('show');
+                setTimeout(() => {
+                    popup.classList.remove('show');
+                    popup.classList.remove('success-popup', 'error-popup');
+                }, 5000);
+                htmx.trigger('.container[hx-get="/network"]', 'networkupdate');
+            } 
+        } else if (evt.detail.pathInfo.requestPath === '/connect') {
+            const popup = document.getElementById('message-popup');
+            const message = document.getElementById('message-text');
+            if (evt.detail.successful) {
+                popup.classList.add('success-popup');
+                message.textContent = 'Network connected';
+                popup.classList.add('show');
+                setTimeout(() => {
+                    popup.classList.remove('show');
+                    popup.classList.remove('success-popup', 'error-popup');
+                }, 5000);
+                htmx.trigger('.container[hx-get="/network"]', 'networkupdate');
+            } 
+        } else if (evt.detail.pathInfo.requestPath === '/autoconnect-network') {
+            const popup = document.getElementById('message-popup');
+            const message = document.getElementById('message-text');
+            if (evt.detail.successful) {
+                popup.classList.add('success-popup');
+                message.textContent = 'Network autoconnection updated';
+                popup.classList.add('show');
+                setTimeout(() => {
+                    popup.classList.remove('show');
+                    popup.classList.remove('success-popup', 'error-popup');
+                }, 5000);
+                htmx.trigger('.container[hx-get="/network"]', 'networkupdate');
+            } 
+        } else if (evt.detail.pathInfo.requestPath === '/setmode') {
+            const popup = document.getElementById('message-popup');
+            const message = document.getElementById('message-text');
+            if (evt.detail.successful) {
+                popup.classList.add('success-popup');
+                message.textContent = 'Network mode updated';
+                popup.classList.add('show');
+                setTimeout(() => {
+                    popup.classList.remove('show');
+                    popup.classList.remove('success-popup', 'error-popup');
+                }, 5000);
+            } 
+        }
+    });
+</script>

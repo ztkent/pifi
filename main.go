@@ -27,9 +27,9 @@ func main() {
 	r.HandleFunc("/setmode", handlers.SetMode(nm)).Methods("POST")
 	r.HandleFunc("/add-network", handlers.ModifyNetworkHandler(nm)).Methods("POST")
 
-	// r.HandleFunc("/remove-network", handlers.ModifyNetworkHandler(nm)).Methods("POST")
-	// r.HandleFunc("/autoconnect-network", handlers.ModifyNetworkHandler(nm)).Methods("POST")
-	// r.HandleFunc("/connect", handlers.ModifyNetworkHandler(nm)).Methods("POST")
+	// r.HandleFunc("/remove-network", handlers.RemoveNetworkConnectionHandler(nm)).Methods("POST")
+	// r.HandleFunc("/autoconnect-network", handlers.AutoConnectNetworkHandler(nm)).Methods("POST")
+	// r.HandleFunc("/connect", handlers.ConnectNetworkHandler(nm)).Methods("POST")
 
 	srv := &http.Server{
 		Handler:      r,

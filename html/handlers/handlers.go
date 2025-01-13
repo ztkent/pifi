@@ -115,3 +115,36 @@ func ModifyNetworkHandler(nm networkmanager.NetworkManager) http.HandlerFunc {
 		}
 	}
 }
+
+func RemoveNetworkConnectionHandler(nm networkmanager.NetworkManager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		r.ParseForm()
+		err := nm.RemoveNetworkConnection(r.Form.Get("network"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+func AutoConnectNetworkHandler(nm networkmanager.NetworkManager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		r.ParseForm()
+		err := nm.SetAutoConnectConnection(r.Form.Get("network"), true)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+func ConnectNetworkHandler(nm networkmanager.NetworkManager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		r.ParseForm()
+		err := nm.ConnectNetwork(r.Form.Get("network"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+}

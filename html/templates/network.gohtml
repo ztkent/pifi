@@ -41,7 +41,7 @@
         margin: 0px;
         width: 200px;
     }
-    .connect-btn, .delete-btn, .autoconnect-btn {
+    .connect-btn, .delete-btn, .autoconnect-btn, .connect-network-btn {
         padding: 8px 16px;
         border-radius: 4px;
         border: none;
@@ -71,7 +71,6 @@
 </head>
 <div class="network-card">
     <h1>Network Management</h1>
-    
     <div class="network-item">
         <div id="networkForm" 
             hx-post="/add-network" 
@@ -108,29 +107,30 @@
                 <option value="{{.SSID}}">{{.SSID}}</option>
             {{end}}
         </select>
-
         <div id="networkOptions" style="display: none;" class="network-item">
-            <button class="connect-btn"
+            <button class="connect-network-btn"
                     hx-post="/connect"
+                    hx-swap="none"
                     hx-confirm="Connecting to this network will disconnect you from the current network. Are you sure you want to continue?"
                     hx-include="[name='network']">
                 Connect
             </button>
             <button class="autoconnect-btn"
                     hx-post="/autoconnect-network"
+                    hx-swap="none"
                     hx-confirm="Autoconnecting to this network will remove 'Autoconnect' from all other wireless networks. Are you sure you want to continue?"
                     hx-include="[name='network']">
                 Autoconnect
             </button>
             <button class="delete-btn"
                     hx-post="/remove-network"
+                    hx-swap="none"
                     hx-include="[name='network']"
-                    hx-confirm="Are you sure you want to delete this network? It will no longer autoconnect.">
+                    hx-confirm="Are you sure you want to delete this saved network connection?">
                 Delete Network
             </button>
         </div>
     </div>
-
     <div class="network-item">
         <span class="network-label">Last Updated:</span>
         <span class="timestamp">{{.Timestamp.Format "2006-01-02 15:04:05"}}</span>
