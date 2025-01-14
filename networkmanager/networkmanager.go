@@ -5,6 +5,9 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 const (
@@ -83,12 +86,25 @@ func (nm *networkManager) GetNetworkStatus() (NetworkStatus, error) {
 		return nm.status, fmt.Errorf("invalid nmcli output fields")
 	}
 
+	// Parse network status
+	state := fields[0]
+	connectivity := fields[1]
+	wifiHW := fields[2]
+	wifi := fields[3]
+	if fields[1] == "(site" && len(fields) >= 6 {
+		state += " " + fields[1] + " " + fields[2]
+		connectivity = fields[3]
+		wifiHW = fields[4]
+		wifi = fields[5]
+	}
+
+	setCase := cases.Title(language.English)
 	networkStatus := NetworkStatus{
 		APSSID:       nm.status.APSSID,
-		State:        fields[0],
-		Connectivity: fields[1],
-		WifiHW:       fields[2],
-		Wifi:         fields[3],
+		State:        setCase.String(state),
+		Connectivity: setCase.String(connectivity),
+		WifiHW:       setCase.String(wifiHW),
+		Wifi:         setCase.String(wifi),
 		WifiSSID:     getWifiSSID(),
 		SignalStr:    getWifiSignal(),
 		Mode:         getWifiMode(nm.status.APSSID),

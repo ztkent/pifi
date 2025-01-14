@@ -35,8 +35,16 @@
         color: #e74c3c;
         font-weight: 600;
     }
+    .site-only {
+        color: #ffa500; 
+        font-weight: 600;
+    }
+    .limited {
+        color: #ffa500;
+        font-weight: 600;
+    }
     .enabled {
-        color: #2980b9;
+        color: #27ae60;
         font-weight: 600;
     }
     .disabled {
@@ -103,21 +111,21 @@
     <h1>Status</h1>
     <div class="status-item">
         <span class="status-label">Network State:</span>
-        <span class="{{if eq .NetworkInfo.State "connected"}}connected{{else}}disconnected{{end}}">
+        <span class="{{if eq .NetworkInfo.State "Connected"}}connected{{else if eq .NetworkInfo.State "Connected (Site Only)"}}site-only{{else}}disconnected{{end}}">
             {{.NetworkInfo.State}}
         </span>
     </div>
 
     <div class="status-item">
         <span class="status-label">Connectivity:</span>
-        <span class="{{if eq .NetworkInfo.Connectivity "full"}}connected{{else}}disconnected{{end}}">
+        <span class="{{if eq .NetworkInfo.Connectivity "Full"}}connected{{else if eq .NetworkInfo.Connectivity "Limited"}}limited{{else}}disconnected{{end}}">
             {{.NetworkInfo.Connectivity}}
         </span>
     </div>
 
     <div class="status-item">
         <span class="status-label">WiFi:</span>
-        <span class="{{if eq .NetworkInfo.Wifi "enabled"}}enabled{{else}}disabled{{end}}">
+        <span class="{{if eq .NetworkInfo.Wifi "Enabled"}}enabled{{else}}disabled{{end}}">
             {{.NetworkInfo.Wifi}}
         </span>
     </div>
