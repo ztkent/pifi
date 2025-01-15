@@ -16,6 +16,8 @@ Tested on Raspberry Pi: 2B, Zero W, Zero 2 W, and 5.
 A simple web service that allows you to configure the WiFi settings of your Raspberry Pi.   
 Connect to the same network as your device running PiFi then navigate to `http://<device-ip>:8088`
 
+<img width="810" alt="image" src="https://github.com/user-attachments/assets/8a36b61c-3f19-4546-bcef-fb7426817186" />
+
 ## Systemd Service
 
 `pifi.service` is a daemon that runs on boot and automatically configures the WiFi settings of your Raspberry Pi.
