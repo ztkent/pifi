@@ -2,6 +2,7 @@ package networkmanager
 
 import (
 	"fmt"
+	"log"
 	"os/exec"
 	"strings"
 	"time"
@@ -43,6 +44,7 @@ type ConnectionInfo struct {
 
 type NetworkManager interface {
 	SetupAPConnection() error
+	ManageOfflineAP(connectionLossTimeout time.Duration) error
 
 	// Network Status
 	GetNetworkStatus() (NetworkStatus, error)
@@ -343,4 +345,24 @@ func (nm *networkManager) ConnectNetwork(ssid string) error {
 		return fmt.Errorf("failed to connect to %s: %v\nOutput: %s", ssid, err, output)
 	}
 	return nil
+}
+
+// Enable the AP if there's no internet connection for a certain amount of time. This will run in the background.
+func (nm *networkManager) ManageOfflineAP(connectionLossTimeout time.Duration) error {
+	for {
+		apMode := getWifiMode(nm.status.APSSID)
+		if !nm.checkWlanConnection() && apMode != "ap" {
+			log.Println("Device offline, waiting for recovery...")
+			time.Sleep(connectionLossTimeout)
+			if !nm.checkWlanConnection() {
+				log.Println("No connection after timeout, enabling AP mode")
+				if err := nm.ConnectNetwork(nm.status.APSSID); err != nil {
+					log.Printf("Failed to enable AP mode: %v", err)
+				}
+			} else {
+				log.Println("Device connection recovered")
+			}
+		}
+		time.Sleep(10 * time.Second)
+	}
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log"
 	"net/http"
 	"os"
@@ -20,6 +21,10 @@ func main() {
 		log.Fatalf("Error setting up AP connection: %v", err)
 	}
 
+	autoAPFlag := flag.Bool("auto", true, "Enable automatic AP mode with no internet connection")
+	apTimeoutFlag := flag.Int("timeout", 30, "Offline time in seconds before re-enabling AP mode")
+	flag.Parse()
+
 	r := mux.NewRouter()
 	r.HandleFunc("/", handlers.PiFiHandler(nm)).Methods("GET")
 	r.HandleFunc("/status", handlers.StatusHandler(nm)).Methods("GET")
@@ -36,6 +41,12 @@ func main() {
 		Addr:         "0.0.0.0:8088",
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
+	}
+
+	if *autoAPFlag {
+		go func() {
+			nm.ManageOfflineAP(time.Duration(*apTimeoutFlag) * time.Second)
+		}()
 	}
 
 	go func() {

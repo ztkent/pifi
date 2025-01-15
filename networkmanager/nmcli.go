@@ -96,7 +96,6 @@ func getWifiIP() string {
 		return "not connected"
 	}
 
-	// Remove CIDR notation if present
 	if strings.Contains(ip, "/") {
 		ip = strings.Split(ip, "/")[0]
 	}
@@ -116,11 +115,9 @@ func getEthernetIP() string {
 		return "not connected"
 	}
 
-	// Remove CIDR notation if present
 	if strings.Contains(ip, "/") {
 		ip = strings.Split(ip, "/")[0]
 	}
-
 	return ip
 }
 
@@ -146,4 +143,24 @@ func getNetworkIps() NetworkIPs {
 		}
 	}
 	return status
+}
+
+func (nm *networkManager) pingTest() bool {
+	cmd := exec.Command("ping", "-I", "wlan0", "-c", "1", "-W", "2", "8.8.8.8")
+	err := cmd.Run()
+	return err == nil
+}
+
+func (nm *networkManager) checkWlanConnection() bool {
+	cmd := exec.Command("nmcli", "-t", "-f", "DEVICE,STATE", "device")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return false
+	}
+	for _, line := range strings.Split(string(output), "\n") {
+		if strings.HasPrefix(line, "wlan0:connected") {
+			return nm.pingTest()
+		}
+	}
+	return false
 }
