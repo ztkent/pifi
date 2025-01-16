@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ztkent/pifi/html"
 	"github.com/ztkent/pifi/networkmanager"
 )
 
@@ -35,7 +36,7 @@ func SetMode(nm networkmanager.NetworkManager) http.HandlerFunc {
 
 func PiFiHandler(nm networkmanager.NetworkManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		tmpl, err := template.ParseFiles("html/templates/index.gohtml")
+		tmpl, err := template.ParseFS(html.Templates, "templates/index.gohtml")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -61,7 +62,7 @@ func StatusHandler(nm networkmanager.NetworkManager) http.HandlerFunc {
 		}
 		status.NetworkInfo = netStatus
 
-		tmpl, err := template.ParseFiles("html/templates/status.gohtml")
+		tmpl, err := template.ParseFS(html.Templates, "templates/status.gohtml")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -87,7 +88,7 @@ func NetworksHandler(nm networkmanager.NetworkManager) http.HandlerFunc {
 			return
 		}
 
-		tmpl, err := template.ParseFiles("html/templates/network.gohtml")
+		tmpl, err := template.ParseFS(html.Templates, "templates/network.gohtml")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
