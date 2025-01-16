@@ -3,6 +3,7 @@ package networkmanager
 import (
 	"fmt"
 	"log"
+	"math/rand"
 	"os/exec"
 	"strings"
 	"time"
@@ -66,11 +67,20 @@ type networkManager struct {
 func New() NetworkManager {
 	nm := &networkManager{
 		status: NetworkStatus{
-			APSSID: "PiFi-AP",
+			APSSID: "PiFi-AP-" + randSeq(4),
 		},
 	}
 	nm.GetNetworkStatus()
 	return nm
+}
+
+func randSeq(n int) string {
+	var letters = []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
 }
 
 func (nm *networkManager) GetNetworkStatus() (NetworkStatus, error) {
@@ -93,7 +103,7 @@ func (nm *networkManager) GetNetworkStatus() (NetworkStatus, error) {
 	connectivity := fields[1]
 	wifiHW := fields[2]
 	wifi := fields[3]
-	if fields[1] == "(site" && len(fields) >= 6 {
+	if fields[1] == "(site" || fields[1] == "(local" && len(fields) >= 6 {
 		state += " " + fields[1] + " " + fields[2]
 		connectivity = fields[3]
 		wifiHW = fields[4]
@@ -177,6 +187,9 @@ func (nm *networkManager) SetupAPConnection() error {
 	if err := cmd.Run(); err == nil {
 		return nil
 	}
+
+	// Remove all existing AP interfaces, PiFi-AP-*
+	removeExistingAPs()
 
 	// Create AP connection with required settings
 	cmd = exec.Command("nmcli", "connection", "add",
@@ -363,6 +376,6 @@ func (nm *networkManager) ManageOfflineAP(connectionLossTimeout time.Duration) e
 				log.Println("Device connection recovered")
 			}
 		}
-		time.Sleep(10 * time.Second)
+		time.Sleep(60 * time.Second)
 	}
 }

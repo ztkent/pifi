@@ -1,10 +1,12 @@
 package networkmanager
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func checkInterfaceExists(name string) bool {
@@ -146,9 +148,11 @@ func getNetworkIps() NetworkIPs {
 }
 
 func (nm *networkManager) pingTest() bool {
-	cmd := exec.Command("ping", "-I", "wlan0", "-c", "1", "-W", "2", "8.8.8.8")
-	err := cmd.Run()
-	return err == nil
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "ping", "-I", "wlan0", "-c", "1", "-W", "2", "1.1.1.1")
+	return cmd.Run() == nil
 }
 
 func (nm *networkManager) checkWlanConnection() bool {
@@ -163,4 +167,25 @@ func (nm *networkManager) checkWlanConnection() bool {
 		}
 	}
 	return false
+}
+
+func removeExistingAPs() error {
+	// Get all connections
+	cmd := exec.Command("nmcli", "-t", "-f", "NAME", "connection", "show")
+	output, err := cmd.Output()
+	if err != nil {
+		return fmt.Errorf("failed to list connections: %v", err)
+	}
+
+	// Find and delete PiFi-AP-* connections
+	connections := strings.Split(string(output), "\n")
+	for _, conn := range connections {
+		if strings.HasPrefix(conn, "PiFi-AP-") {
+			deleteCmd := exec.Command("nmcli", "connection", "delete", conn)
+			if err := deleteCmd.Run(); err != nil {
+				return fmt.Errorf("failed to delete connection %s: %v", conn, err)
+			}
+		}
+	}
+	return nil
 }
