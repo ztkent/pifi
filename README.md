@@ -23,12 +23,12 @@ A simple web service that allows you to configure the WiFi settings of your Rasp
 ## Systemd Service
 
 `pifi.service` is a daemon that runs on boot and helps you configure the WiFi settings of your Raspberry Pi.  
-If your device is not connected to a network, the service will start in access point mode.
 
+- If the service detects your device is offline, it will enable access point mode
 - Connect a client to the access point 
   - The AP should be named `PiFi-AP-<1234>`
-- Navigate to `http://10.42.0.1:8088` to view the web interface. 
-- View the available networks, and connect your target network.  
+- Navigate to `http://10.42.0.1:8088` to view the web interface 
+- View the available networks, and connect your target network
 
 ### Setup
 
