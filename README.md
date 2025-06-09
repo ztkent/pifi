@@ -15,7 +15,8 @@ Tested on Raspberry Pi: 2B, Zero W, Zero 2 W, and 5.
 
 A simple web service that allows you to configure the WiFi settings of your Raspberry Pi.   
 - Connect to the same network as your device running PiFi
-- Navigate to `http://<device-ip>:8088`  
+- Navigate to `http://localhost:8088`
+- If using more than one PiFi device, connect directly to `http://<device-ip>:8088`
 
 <img width="720" height="400" alt="image" src="https://github.com/user-attachments/assets/14ca5116-28df-43fd-8203-88c12690f924" />
 
