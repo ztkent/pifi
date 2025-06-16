@@ -1,0 +1,199 @@
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 40px;
+        background-color: #f5f6fa;
+    }
+    .env-card {
+        border: 1px solid #e1e1e1;
+        border-radius: 12px;
+        padding: 30px;
+        width: 600px;
+        margin: 0 auto;
+        background-color: white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .env-item {
+        margin: 15px 0;
+        padding: 10px;
+        border-bottom: 1px solid #f1f1f1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .env-item:last-child {
+        border-bottom: none;
+    }
+    .env-key {
+        font-weight: 600;
+        color: #2d3436;
+        min-width: 150px;
+        margin-right: 10px;
+    }
+    .env-value {
+        color: #636e72;
+        flex-grow: 1;
+        margin-right: 10px;
+        word-break: break-all;
+        font-family: monospace;
+        background-color: #f8f9fa;
+        padding: 4px 8px;
+        border-radius: 4px;
+    }
+    .env-actions {
+        display: flex;
+        gap: 5px;
+    }
+    .env-input {
+        padding: 8px;
+        border-radius: 4px;
+        border: 1px solid #ddd;
+        margin-right: 5px;
+    }
+    .key-input {
+        width: 150px;
+    }
+    .value-input {
+        width: 250px;
+    }
+    .btn {
+        padding: 6px 12px;
+        border-radius: 4px;
+        border: none;
+        cursor: pointer;
+        font-size: 12px;
+    }
+    .btn-primary {
+        background-color: #3498db;
+        color: white;
+    }
+    .btn-success {
+        background-color: #2ecc71;
+        color: white;
+    }
+    .btn-danger {
+        background-color: #e74c3c;
+        color: white;
+    }
+    .btn-secondary {
+        background-color: #95a5a6;
+        color: white;
+    }
+    .add-env-form {
+        background-color: #ecf0f1;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    .form-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+    .show-values-toggle {
+        margin-bottom: 20px;
+        text-align: center;
+    }
+    .hidden-value {
+        color: #95a5a6;
+        font-style: italic;
+    }
+    h1 {
+        color: #2c3e50;
+        margin-bottom: 25px;
+        text-align: center;
+    }
+    .timestamp {
+        color: #7f8c8d;
+        font-size: 0.9em;
+        text-align: center;
+        margin-top: 20px;
+    }
+    .no-vars {
+        text-align: center;
+        color: #95a5a6;
+        font-style: italic;
+        padding: 20px;
+    }
+</style>
+
+<div class="env-card">
+    <h1>Environment Variables</h1>
+    
+    <div class="add-env-form">
+        <h3>Add New Variable</h3>
+        <div id="addEnvForm"
+             hx-post="/env/set"
+             hx-trigger="click from:.btn-success"
+             hx-swap="none"
+             hx-include="#addEnvForm">
+            <div class="form-row">
+                <input type="text" 
+                       name="key" 
+                       class="env-input key-input"
+                       placeholder="Variable name"
+                       required>
+                <input type="text" 
+                       name="value" 
+                       class="env-input value-input"
+                       placeholder="Variable value"
+                       required>
+                <button class="btn btn-success">Add Variable</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="show-values-toggle">
+        <button class="btn btn-secondary" onclick="toggleValues()">
+            <span id="toggle-text">Show Values</span>
+        </button>
+    </div>
+
+    {{if .EnvironmentVars}}
+        {{range $key, $value := .EnvironmentVars}}
+        <div class="env-item">
+            <span class="env-key">{{$key}}</span>
+            <span class="env-value" data-key="{{$key}}">
+                <span class="hidden-value">••••••••</span>
+                <span class="actual-value" style="display: none;">{{$value}}</span>
+            </span>
+            <div class="env-actions">
+                <button class="btn btn-danger"
+                        hx-post="/env/unset"
+                        hx-vals='{"key": "{{$key}}"}'
+                        hx-swap="none"
+                        hx-confirm="Are you sure you want to delete the environment variable '{{$key}}'?">
+                    Delete
+                </button>
+            </div>
+        </div>
+        {{end}}
+    {{else}}
+        <div class="no-vars">No environment variables found</div>
+    {{end}}
+
+    <div class="timestamp">Last Updated: {{.Timestamp.Format "2006-01-02 15:04:05"}}</div>
+</div>
+
+<script>
+let valuesVisible = false;
+
+function toggleValues() {
+    const toggleText = document.getElementById('toggle-text');
+    const hiddenValues = document.querySelectorAll('.hidden-value');
+    const actualValues = document.querySelectorAll('.actual-value');
+    
+    if (valuesVisible) {
+        hiddenValues.forEach(el => el.style.display = 'inline');
+        actualValues.forEach(el => el.style.display = 'none');
+        toggleText.textContent = 'Show Values';
+        valuesVisible = false;
+    } else {
+        hiddenValues.forEach(el => el.style.display = 'none');
+        actualValues.forEach(el => el.style.display = 'inline');
+        toggleText.textContent = 'Hide Values';
+        valuesVisible = true;
+    }
+}
+</script>

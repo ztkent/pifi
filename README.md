@@ -10,6 +10,7 @@ Tested on Raspberry Pi: 2B, Zero W, Zero 2 W, and 5.
 - Web Interface for WiFi management
 - Access point mode to manage offline devices
 - Systemd service for automatic network configuration
+- Environment variable management with graceful permission handling
 
 ## Web Interface
 
@@ -44,6 +45,7 @@ After=network.target
 [Service]
 ExecStart=<path-to-pifi-binary>
 Environment="PATH=/usr/bin:/usr/sbin"
+EnvironmentFile=-/etc/default/pifi
 WorkingDirectory=<directory-of-pifi-binary>
 User=root
 Restart=always
@@ -63,3 +65,14 @@ WantedBy=multi-user.target
 
 - Check the status of the service:   
 `sudo systemctl status pifi.service`
+
+## Environment Variables
+
+PiFi supports managing environment variables through the web interface. The service attempts to store variables in system files when running as root, and gracefully falls back to user files when permissions are insufficient.
+
+### Environment File Locations
+- System: `/etc/default/pifi` (preferred when running as root)
+- User fallback: `~/.pifi_env`
+- Also reads from: `/etc/environment`, `~/.bashrc`
+
+The systemd service configuration includes `EnvironmentFile=-/etc/default/pifi` to automatically load environment variables.

@@ -36,6 +36,10 @@ func main() {
 	r.HandleFunc("/autoconnect-network", handlers.AutoConnectNetworkHandler(nm)).Methods("POST")
 	r.HandleFunc("/connect", handlers.ConnectNetworkHandler(nm)).Methods("POST")
 
+	r.HandleFunc("/environment", handlers.EnvironmentHandler(nm)).Methods("GET")
+	r.HandleFunc("/set-env", handlers.SetEnvironmentHandler(nm)).Methods("POST")
+	r.HandleFunc("/unset-env", handlers.UnsetEnvironmentHandler(nm)).Methods("POST")
+
 	srv := &http.Server{
 		Handler:      r,
 		Addr:         "0.0.0.0:8088",

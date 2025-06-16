@@ -23,6 +23,11 @@ type NetworkResponse struct {
 	Timestamp          time.Time                       `json:"timestamp"`
 }
 
+type EnvironmentResponse struct {
+	Variables map[string]string `json:"variables"`
+	Timestamp time.Time         `json:"timestamp"`
+}
+
 func SetMode(nm networkmanager.NetworkManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
@@ -147,5 +152,73 @@ func ConnectNetworkHandler(nm networkmanager.NetworkManager) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+	}
+}
+
+func EnvironmentHandler(nm networkmanager.NetworkManager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		envVars, err := nm.GetEnvironmentVariables()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		response := EnvironmentResponse{
+			Variables: envVars,
+			Timestamp: time.Now(),
+		}
+
+		tmpl, err := template.ParseFS(html.Templates, "templates/environment.gohtml")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		err = tmpl.Execute(w, response)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+func SetEnvironmentHandler(nm networkmanager.NetworkManager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		r.ParseForm()
+		key := r.Form.Get("key")
+		value := r.Form.Get("value")
+
+		if key == "" {
+			http.Error(w, "Environment variable key cannot be empty", http.StatusBadRequest)
+			return
+		}
+
+		err := nm.SetEnvironmentVariable(key, value)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func UnsetEnvironmentHandler(nm networkmanager.NetworkManager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		r.ParseForm()
+		key := r.Form.Get("key")
+
+		if key == "" {
+			http.Error(w, "Environment variable key cannot be empty", http.StatusBadRequest)
+			return
+		}
+
+		err := nm.UnsetEnvironmentVariable(key)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
 	}
 }
