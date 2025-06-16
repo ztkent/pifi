@@ -28,8 +28,8 @@ func readEnvFile(filename string) (map[string]string, error) {
 		}
 
 		// Handle export statements
-		if strings.HasPrefix(line, "export ") {
-			line = strings.TrimPrefix(line, "export ")
+		if after, ok := strings.CutPrefix(line, "export "); ok {
+			line = after
 		}
 
 		// Parse key=value
