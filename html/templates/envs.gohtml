@@ -1,0 +1,572 @@
+<style>
+    .env-card {
+        border: 1px solid #e1e1e1;
+        border-radius: 12px;
+        padding: 30px;
+        width: 600px;
+        margin: 0 auto;
+        background-color: white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .env-item {
+        margin: 15px 0;
+        padding: 10px;
+        border-bottom: 1px solid #f1f1f1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .env-item:last-child {
+        border-bottom: none;
+    }
+    .env-key {
+        font-weight: 600;
+        color: #2d3436;
+        min-width: 150px;
+        margin-right: 10px;
+    }
+    .env-value {
+        color: #636e72;
+        flex-grow: 1;
+        margin-right: 10px;
+        word-break: break-all;
+        font-family: monospace;
+        background-color: #f8f9fa;
+        padding: 4px 8px;
+        border-radius: 4px;
+    }
+    .env-actions {
+        display: flex;
+        gap: 5px;
+    }
+    .env-input {
+        padding: 8px;
+        border-radius: 4px;
+        border: 1px solid #ddd;
+        margin-right: 5px;
+    }
+    .key-input {
+        width: 150px;
+    }
+    .value-input {
+        width: 250px;
+    }
+    .btn {
+        padding: 6px 12px;
+        border-radius: 4px;
+        border: none;
+        cursor: pointer;
+        font-size: 12px;
+    }
+    .btn-primary {
+        background-color: #3498db;
+        color: white;
+    }
+    .btn-success {
+        background-color: #2ecc71;
+        color: white;
+    }
+    .btn-danger {
+        background-color: #e74c3c;
+        color: white;
+    }
+    .btn-secondary {
+        background-color: #95a5a6;
+        color: white;
+    }
+    .btn-warning {
+        background-color: #f39c12;
+        color: white;
+    }
+    .add-env-form {
+        background-color: #ecf0f1;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    .form-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+    .show-values-toggle {
+        margin-bottom: 20px;
+        text-align: center;
+    }
+    .hidden-value {
+        color: #95a5a6;
+        font-style: italic;
+    }
+    .env-title {
+        color: #2c3e50;
+        margin-bottom: 25px;
+        text-align: center;
+        font-size: 1.5em;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+    .timestamp {
+        color: #7f8c8d;
+        font-size: 0.9em;
+        text-align: center;
+        margin-top: 20px;
+    }
+    .no-vars {
+        text-align: center;
+        color: #95a5a6;
+        font-style: italic;
+        padding: 20px;
+    }
+    .add-env-title {
+        color: #2c3e50;
+        margin-bottom: 15px;
+        font-size: 1.1em;
+        font-weight: 600;
+    }
+    .lock-icon {
+        cursor: pointer;
+        font-size: 1.2em;
+        padding: 5px;
+        border-radius: 3px;
+        transition: background-color 0.3s;
+    }
+    .lock-icon:hover {
+        background-color: #ecf0f1;
+    }
+    .lock-icon.locked {
+        color: #e74c3c;
+    }
+    .lock-icon.unlocked {
+        color: #95a5a6;
+    }
+    .password-modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+    }
+    .password-modal-content {
+        background-color: white;
+        margin: 15% auto;
+        padding: 20px;
+        border-radius: 8px;
+        width: 400px;
+        max-width: 90%;
+    }
+    .password-form {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+    .password-form input {
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    .password-form button {
+        padding: 10px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    .auth-prompt {
+        text-align: center;
+        padding: 40px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        margin: 20px 0;
+    }
+    .auth-form {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+        max-width: 300px;
+        margin: 0 auto;
+    }
+    .auth-form input {
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        width: 100%;
+    }
+    .hidden-auth-input {
+        display: none;
+    }
+</style>
+
+{{if .RequiresAuth}}
+<div class="env-card">
+    <div class="env-title">
+        🔒 Environment Variables
+        <span class="lock-icon locked" onclick="showPasswordModal('unlock')" title="Remove password protection">🔓</span>
+    </div>
+    
+    <div class="auth-prompt">
+        <h3>Authentication Required</h3>
+        <p>This page is password protected. Please enter your password to continue.</p>
+        
+        <form class="auth-form" 
+              hx-post="/environment"
+              hx-swap="outerHTML"
+              hx-target=".env-card">
+            <input type="password" 
+                   name="password" 
+                   placeholder="Enter password"
+                   required>
+            <button type="submit" class="btn btn-primary">Unlock</button>
+        </form>
+    </div>
+</div>
+{{else}}
+<div class="env-card">
+    <div class="env-title">
+        Environment Variables
+        {{if .IsPasswordSet}}
+            <span class="lock-icon locked" onclick="showPasswordModal('remove')" title="Remove password protection">🔒</span>
+        {{else}}
+            <span class="lock-icon unlocked" onclick="showPasswordModal('set')" title="Add password protection">🔓</span>
+        {{end}}
+    </div>
+    
+    <div class="add-env-form">
+        <div class="add-env-title">Add New Variable</div>
+        <div id="addEnvForm"
+             hx-post="/env/set"
+             hx-trigger="click from:.btn-success"
+             hx-swap="none"
+             hx-include="#addEnvForm">
+            <div class="form-row">
+                <input type="text" 
+                       name="key" 
+                       class="env-input key-input"
+                       placeholder="Variable name"
+                       required>
+                <input type="text" 
+                       name="value" 
+                       class="env-input value-input"
+                       placeholder="Variable value"
+                       required>
+                {{if .IsPasswordSet}}
+                    <input type="password" 
+                           name="auth_password" 
+                           class="env-input hidden-auth-input"
+                           id="auth-password-add"
+                           placeholder="Password"
+                           required>
+                {{end}}
+                <button class="btn btn-success" onclick="{{if .IsPasswordSet}}requireAuth('add'){{end}}">Add Variable</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="show-values-toggle">
+        <button class="btn btn-secondary" onclick="toggleValues()">
+            <span id="toggle-text">Show Values</span>
+        </button>
+    </div>
+
+    {{if .EnvironmentVars}}
+        {{range $key, $value := .EnvironmentVars}}
+        <div class="env-item">
+            <span class="env-key">{{$key}}</span>
+            <span class="env-value" data-key="{{$key}}">
+                <span class="hidden-value">••••••••</span>
+                <span class="actual-value" style="display: none;">{{$value}}</span>
+            </span>
+            <div class="env-actions">
+                <button class="btn btn-danger"
+                        hx-post="/env/unset"
+                        hx-vals='{"key": "{{$key}}"{{if $.IsPasswordSet}}, "auth_password": ""{{end}}}'
+                        hx-swap="none"
+                        hx-confirm="Are you sure you want to delete the environment variable '{{$key}}'?"
+                        onclick="{{if $.IsPasswordSet}}requireAuth('delete', '{{$key}}', this){{end}}">
+                    Delete
+                </button>
+            </div>
+        </div>
+        {{end}}
+    {{else}}
+        <div class="no-vars">No environment variables found</div>
+    {{end}}
+
+    <div class="timestamp">Last Updated: {{.Timestamp.Format "2006-01-02 15:04:05"}}</div>
+</div>
+{{end}}
+
+<!-- Password Modal -->
+<div id="passwordModal" class="password-modal">
+    <div class="password-modal-content">
+        <div id="modalContent">
+            <!-- Content will be populated by JavaScript -->
+        </div>
+    </div>
+</div>
+
+<script>
+let valuesVisible = false;
+
+function toggleValues() {
+    const toggleText = document.getElementById('toggle-text');
+    const hiddenValues = document.querySelectorAll('.hidden-value');
+    const actualValues = document.querySelectorAll('.actual-value');
+    
+    if (valuesVisible) {
+        hiddenValues.forEach(el => el.style.display = 'inline');
+        actualValues.forEach(el => el.style.display = 'none');
+        toggleText.textContent = 'Show Values';
+        valuesVisible = false;
+    } else {
+        hiddenValues.forEach(el => el.style.display = 'none');
+        actualValues.forEach(el => el.style.display = 'inline');
+        toggleText.textContent = 'Hide Values';
+        valuesVisible = true;
+    }
+}
+
+function showPasswordModal(action) {
+    const modal = document.getElementById('passwordModal');
+    const content = document.getElementById('modalContent');
+    
+    let html = '';
+    
+    if (action === 'set') {
+        html = `
+            <h3>Set Password Protection</h3>
+            <p>Enter a password to protect the environment variables page:</p>
+            <div class="password-form">
+                <input type="password" id="newPassword" placeholder="New Password" required>
+                <input type="password" id="confirmPassword" placeholder="Confirm Password" required>
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" class="btn btn-warning" onclick="setPassword()">Set Password</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                </div>
+            </div>
+        `;
+    } else if (action === 'remove') {
+        html = `
+            <h3>Remove Password Protection</h3>
+            <p>Enter your current password to remove protection:</p>
+            <div class="password-form">
+                <input type="password" id="currentPassword" placeholder="Current Password" required>
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" class="btn btn-danger" onclick="removePassword()">Remove Protection</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                </div>
+            </div>
+        `;
+    } else if (action === 'unlock') {
+        html = `
+            <h3>Remove Password Protection</h3>
+            <p>Enter your password to remove protection and unlock the page:</p>
+            <div class="password-form">
+                <input type="password" id="unlockPassword" placeholder="Password" required>
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" class="btn btn-danger" onclick="unlockAndRemove()">Remove Protection</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                </div>
+            </div>
+        `;
+    }
+    
+    content.innerHTML = html;
+    modal.style.display = 'block';
+}
+
+function closeModal() {
+    document.getElementById('passwordModal').style.display = 'none';
+}
+
+function setPassword() {
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    
+    if (!newPassword || !confirmPassword) {
+        alert('Please fill in all fields');
+        return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+        alert('Passwords do not match');
+        return;
+    }
+    
+    // Create a temporary form to handle the submission properly
+    const tempForm = document.createElement('form');
+    tempForm.style.display = 'none';
+    tempForm.setAttribute('hx-post', '/env/set-password');
+    tempForm.setAttribute('hx-swap', 'none');
+    
+    const newPasswordInput = document.createElement('input');
+    newPasswordInput.type = 'hidden';
+    newPasswordInput.name = 'new_password';
+    newPasswordInput.value = newPassword;
+    
+    const confirmPasswordInput = document.createElement('input');
+    confirmPasswordInput.type = 'hidden';
+    confirmPasswordInput.name = 'confirm_password';
+    confirmPasswordInput.value = confirmPassword;
+    
+    tempForm.appendChild(newPasswordInput);
+    tempForm.appendChild(confirmPasswordInput);
+    document.body.appendChild(tempForm);
+    
+    // Set up event listeners for this specific request
+    tempForm.addEventListener('htmx:afterRequest', function(evt) {
+        document.body.removeChild(tempForm);
+        if (evt.detail.successful) {
+            closeModal();
+            triggerEnvUpdate();
+            showSuccessMessage('Password protection enabled');
+        } else {
+            alert('Failed to set password: ' + (evt.detail.xhr.responseText || 'Unknown error'));
+        }
+    });
+    
+    // Trigger the request
+    htmx.process(tempForm);
+    htmx.trigger(tempForm, 'submit');
+}
+
+function removePassword() {
+    const currentPassword = document.getElementById('currentPassword').value;
+    
+    if (!currentPassword) {
+        alert('Please enter your current password');
+        return;
+    }
+    
+    // Create a temporary form to handle the submission properly
+    const tempForm = document.createElement('form');
+    tempForm.style.display = 'none';
+    tempForm.setAttribute('hx-post', '/env/remove-password');
+    tempForm.setAttribute('hx-swap', 'none');
+    
+    const currentPasswordInput = document.createElement('input');
+    currentPasswordInput.type = 'hidden';
+    currentPasswordInput.name = 'current_password';
+    currentPasswordInput.value = currentPassword;
+    
+    tempForm.appendChild(currentPasswordInput);
+    document.body.appendChild(tempForm);
+    
+    // Set up event listeners for this specific request
+    tempForm.addEventListener('htmx:afterRequest', function(evt) {
+        document.body.removeChild(tempForm);
+        if (evt.detail.successful) {
+            closeModal();
+            triggerEnvUpdate();
+            showSuccessMessage('Password protection removed');
+        } else {
+            alert('Invalid password or error removing protection');
+        }
+    });
+    
+    // Trigger the request
+    htmx.process(tempForm);
+    htmx.trigger(tempForm, 'submit');
+}
+
+function unlockAndRemove() {
+    const password = document.getElementById('unlockPassword').value;
+    
+    if (!password) {
+        alert('Please enter your password');
+        return;
+    }
+    
+    // Create a temporary form to handle the submission properly
+    const tempForm = document.createElement('form');
+    tempForm.style.display = 'none';
+    tempForm.setAttribute('hx-post', '/env/remove-password');
+    tempForm.setAttribute('hx-swap', 'none');
+    
+    const passwordInput = document.createElement('input');
+    passwordInput.type = 'hidden';
+    passwordInput.name = 'current_password';
+    passwordInput.value = password;
+    
+    tempForm.appendChild(passwordInput);
+    document.body.appendChild(tempForm);
+    
+    // Set up event listeners for this specific request
+    tempForm.addEventListener('htmx:afterRequest', function(evt) {
+        document.body.removeChild(tempForm);
+        if (evt.detail.successful) {
+            closeModal();
+            // Reload the environment page without password requirement
+            const envContainer = document.querySelector('.container[hx-get="/environment"]');
+            if (envContainer) {
+                htmx.trigger(envContainer, 'load');
+            }
+            showSuccessMessage('Password protection removed');
+        } else {
+            alert('Invalid password');
+        }
+    });
+    
+    // Trigger the request
+    htmx.process(tempForm);
+    htmx.trigger(tempForm, 'submit');
+}
+
+function requireAuth(action, key = '', element = null) {
+    const password = prompt('Enter password:');
+    if (!password) return false;
+    
+    if (action === 'add') {
+        document.getElementById('auth-password-add').value = password;
+        return true;
+    } else if (action === 'delete' && element) {
+        // Update the hx-vals to include the password
+        const currentVals = element.getAttribute('hx-vals');
+        const valsObj = JSON.parse(currentVals);
+        valsObj.auth_password = password;
+        element.setAttribute('hx-vals', JSON.stringify(valsObj));
+        return true;
+    }
+    
+    return false;
+}
+
+function triggerEnvUpdate() {
+    const envContainer = document.querySelector('.container[hx-get="/environment"]');
+    if (envContainer) {
+        htmx.trigger(envContainer, 'envupdate');
+    }
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('passwordModal');
+    if (event.target === modal) {
+        closeModal();
+    }
+}
+
+function showSuccessMessage(text) {
+    // Try to call the parent window's showSuccessMessage function
+    try {
+        if (window.parent && window.parent.showSuccessMessage) {
+            window.parent.showSuccessMessage(text);
+        } else if (window.showSuccessMessage) {
+            window.showSuccessMessage(text);
+        } else {
+            // Fallback - create our own success message
+            console.log('Success:', text);
+            alert(text);
+        }
+    } catch (e) {
+        console.log('Success:', text);
+        alert(text);
+    }
+}
+</script>
