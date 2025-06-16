@@ -69,7 +69,8 @@ WantedBy=multi-user.target
 
 ## Environment Variables
 
-PiFi supports managing environment variables through the web interface. By default, the device env's are unlocked. Users can lock the environment variables to prevent unauthorized changes.
+PiFi supports managing environment variables through the web interface.  
+By default the device environment is unlocked. Users can lock the environment to prevent unauthorized changes.
 
 <img width="720" alt="image" src="https://github.com/user-attachments/assets/74a060fa-5428-499c-a80c-bf41b23b0ae6" />
 
