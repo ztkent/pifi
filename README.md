@@ -4,7 +4,7 @@ Modern headless WiFi configuration tool for Raspberry Pi.
 Remotely manage IoT projects without physical access to the device.
 
 Works with Bookworm using NetworkManager.  
-Tested on Raspberry Pi: 2B, Zero W, Zero 2 W, and 5.
+Tested on Raspberry Pi: 2B, Zero W, Zero 2 W, 4 and 5.
 
 ## Key Features
 
