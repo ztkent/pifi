@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 )
 
@@ -146,17 +145,6 @@ func removeSystemEnv(key string) error {
 
 	// Unset the environment variable for the current process
 	os.Unsetenv(key)
-
-	return nil
-}
-
-// reloadSystemEnv attempts to reload environment variables system-wide
-func reloadSystemEnv() error {
-	// Source the environment file for systemd services
-	cmd := exec.Command("systemctl", "daemon-reload")
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to reload systemd: %v", err)
-	}
 
 	return nil
 }
