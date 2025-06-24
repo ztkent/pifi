@@ -35,6 +35,16 @@
         padding: 4px 8px;
         border-radius: 4px;
     }
+    .env-edit-input {
+        color: #636e72;
+        flex-grow: 1;
+        margin-right: 10px;
+        font-family: monospace;
+        padding: 4px 8px;
+        border: 1px solid #3498db;
+        border-radius: 4px;
+        background-color: white;
+    }
     .env-actions {
         display: flex;
         gap: 5px;
@@ -201,6 +211,11 @@
     .hidden-auth-input {
         display: none;
     }
+    .editing {
+        background-color: #f0f8ff;
+        border: 1px solid #3498db;
+        border-radius: 4px;
+    }
 </style>
 
 {{if .RequiresAuth}}
@@ -240,8 +255,8 @@
     <div class="add-env-form">
         <div class="add-env-title">Add New Variable</div>
         <div id="addEnvForm"
-             hx-post="/env/set"
              hx-trigger="click from:.btn-success"
+             hx-post="/env/set"
              hx-swap="none"
              hx-include="#addEnvForm">
             <div class="form-row">
@@ -276,20 +291,39 @@
 
     {{if .EnvironmentVars}}
         {{range $key, $value := .EnvironmentVars}}
-        <div class="env-item">
+        <div class="env-item" id="env-item-{{$key}}">
             <span class="env-key">{{$key}}</span>
-            <span class="env-value" data-key="{{$key}}">
+            <span class="env-value" data-key="{{$key}}" id="env-value-{{$key}}">
                 <span class="hidden-value">••••••••</span>
                 <span class="actual-value" style="display: none;">{{$value}}</span>
             </span>
-            <div class="env-actions">
-                <button class="btn btn-danger"
+            <input type="text" 
+                   class="env-edit-input" 
+                   id="env-edit-{{$key}}" 
+                   value="{{$value}}" 
+                   style="display: none;">
+            <div class="env-actions" id="env-actions-{{$key}}">
+                <button class="btn btn-primary edit-btn"
+                        onclick="startEdit('{{$key}}')">
+                    Edit
+                </button>
+                <button class="btn btn-danger delete-btn"
                         hx-post="/env/unset"
                         hx-vals='{"key": "{{$key}}"{{if $.IsPasswordSet}}, "auth_password": ""{{end}}}'
                         hx-swap="none"
                         hx-confirm="Are you sure you want to delete the environment variable '{{$key}}'?"
                         onclick="{{if $.IsPasswordSet}}requireAuth('delete', '{{$key}}', this){{end}}">
                     Delete
+                </button>
+            </div>
+            <div class="env-actions" id="env-edit-actions-{{$key}}" style="display: none;">
+                <button class="btn btn-success save-btn"
+                        onclick="saveEdit('{{$key}}')">
+                    Save
+                </button>
+                <button class="btn btn-secondary cancel-btn"
+                        onclick="cancelEdit('{{$key}}')">
+                    Cancel
                 </button>
             </div>
         </div>
@@ -318,8 +352,6 @@
 </div>
 
 <script>
-let valuesVisible = false;
-
 function toggleValues() {
     const toggleText = document.getElementById('toggle-text');
     const hiddenValues = document.querySelectorAll('.hidden-value');
@@ -337,6 +369,149 @@ function toggleValues() {
         valuesVisible = true;
     }
 }
+
+function startEdit(key) {
+    // If another item is being edited, cancel it first
+    if (editingKey && editingKey !== key) {
+        cancelEdit(editingKey);
+    }
+    
+    editingKey = key;
+    const valueElement = document.getElementById(`env-value-${key}`);
+    const editInput = document.getElementById(`env-edit-${key}`);
+    const actions = document.getElementById(`env-actions-${key}`);
+    const editActions = document.getElementById(`env-edit-actions-${key}`);
+    const envItem = document.getElementById(`env-item-${key}`);
+    
+    // Store original value
+    originalValue = editInput.value;
+    
+    // Hide value display and show edit input
+    valueElement.style.display = 'none';
+    editInput.style.display = 'block';
+    
+    // Switch action buttons
+    actions.style.display = 'none';
+    editActions.style.display = 'flex';
+    
+    // Add editing style
+    envItem.classList.add('editing');
+    
+    // Focus on the input
+    editInput.focus();
+    editInput.select();
+}
+
+function cancelEdit(key) {
+    const valueElement = document.getElementById(`env-value-${key}`);
+    const editInput = document.getElementById(`env-edit-${key}`);
+    const actions = document.getElementById(`env-actions-${key}`);
+    const editActions = document.getElementById(`env-edit-actions-${key}`);
+    const envItem = document.getElementById(`env-item-${key}`);
+    
+    // Restore original value
+    editInput.value = originalValue;
+    
+    // Show value display and hide edit input
+    valueElement.style.display = 'block';
+    editInput.style.display = 'none';
+    
+    // Switch action buttons
+    actions.style.display = 'flex';
+    editActions.style.display = 'none';
+    
+    // Remove editing style
+    envItem.classList.remove('editing');
+    
+    // Clear editing state
+    editingKey = null;
+    originalValue = null;
+}
+
+function saveEdit(key) {
+    const editInput = document.getElementById(`env-edit-${key}`);
+    const newValue = editInput.value.trim();
+    
+    if (newValue === '') {
+        alert('Value cannot be empty');
+        return;
+    }
+    
+    // Check if password is required
+    const isPasswordSet = {{.IsPasswordSet}};
+    let password = '';
+    
+    if (isPasswordSet) {
+        password = prompt('Enter password:');
+        if (!password) return;
+    }
+    
+    // Create a temporary form to handle the submission
+    const tempForm = document.createElement('form');
+    tempForm.style.display = 'none';
+    tempForm.setAttribute('hx-post', '/env/set');
+    tempForm.setAttribute('hx-swap', 'none');
+    
+    const keyInput = document.createElement('input');
+    keyInput.type = 'hidden';
+    keyInput.name = 'key';
+    keyInput.value = key;
+    
+    const valueInput = document.createElement('input');
+    valueInput.type = 'hidden';
+    valueInput.name = 'value';
+    valueInput.value = newValue;
+    
+    tempForm.appendChild(keyInput);
+    tempForm.appendChild(valueInput);
+    
+    if (isPasswordSet) {
+        const passwordInput = document.createElement('input');
+        passwordInput.type = 'hidden';
+        passwordInput.name = 'auth_password';
+        passwordInput.value = password;
+        tempForm.appendChild(passwordInput);
+    }
+    
+    document.body.appendChild(tempForm);
+    
+    // Set up event listeners for this specific request
+    tempForm.addEventListener('htmx:afterRequest', function(evt) {
+        document.body.removeChild(tempForm);
+        if (evt.detail.successful) {
+            // Update the displayed value
+            const actualValueSpan = document.querySelector(`#env-value-${key} .actual-value`);
+            if (actualValueSpan) {
+                actualValueSpan.textContent = newValue;
+            }
+            
+            // Exit edit mode
+            cancelEdit(key);
+            
+            // Show success message
+            showSuccessMessage(`Environment variable '${key}' updated successfully`);
+        } else {
+            alert('Failed to update environment variable: ' + (evt.detail.xhr.responseText || 'Unknown error'));
+        }
+    });
+    
+    // Trigger the request
+    htmx.process(tempForm);
+    htmx.trigger(tempForm, 'submit');
+}
+
+// Add keyboard event listeners for edit inputs
+document.addEventListener('keydown', function(event) {
+    if (editingKey && event.target.id === `env-edit-${editingKey}`) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            saveEdit(editingKey);
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            cancelEdit(editingKey);
+        }
+    }
+});
 
 function showPasswordModal(action) {
     const modal = document.getElementById('passwordModal');

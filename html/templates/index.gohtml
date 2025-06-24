@@ -151,6 +151,9 @@
     </div>
 
     <script>
+        let valuesVisible = false;
+        let editingKey = null;
+        let originalValue = null;
         function switchTab(tabName) {
             // Hide all tab contents
             document.querySelectorAll('.tab-content').forEach(tab => {
@@ -170,11 +173,13 @@
         }
 
         document.body.addEventListener('htmx:responseError', function(evt) {
-            const popup = document.getElementById('error-popup');
-            const message = document.getElementById('error-message');
-            message.textContent = evt.detail.error || 'An error occurred';
-            popup.classList.add('show');
-            setTimeout(() => popup.classList.remove('show'), 5000);
+            if (evt.detail.pathInfo.requestPath !== '/env/set') {
+                const popup = document.getElementById('error-popup');
+                const message = document.getElementById('error-message');
+                message.textContent = evt.detail.error || 'An error occurred';
+                popup.classList.add('show');
+                setTimeout(() => popup.classList.remove('show'), 5000);
+            }
         });
 
         document.body.addEventListener('htmx:afterRequest', function(evt) {
@@ -207,7 +212,6 @@
                 } 
             } else if (evt.detail.pathInfo.requestPath === '/env/set') {
                 if (evt.detail.successful) {
-                    showSuccessMessage('Environment variable set');
                     htmx.trigger('.container[hx-get="/environment"]', 'envupdate');
                     // Clear the form
                     document.querySelector('input[name="key"]').value = '';
