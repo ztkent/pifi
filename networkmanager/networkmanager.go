@@ -374,98 +374,49 @@ func (nm *networkManager) ConnectNetwork(ssid string) error {
 	return nil
 }
 
-// Get environment variables with permission error handling
+// Get environment variables - now returns only managed variables
 func (nm *networkManager) GetEnvironmentVariables() (map[string]string, error) {
-	envVars := make(map[string]string)
-
-	// Try to read from common environment sources
-	sources := []string{
-		"/etc/environment",
-		"/etc/default/pifi",
-		"/home/pi/.bashrc",
-	}
-
-	for _, source := range sources {
-		if vars, err := readEnvFile(source); err == nil {
-			for k, v := range vars {
-				envVars[k] = v
-			}
-		}
-		// Silently continue if file doesn't exist or no permission
-	}
-
-	// Add current process environment
-	for _, env := range os.Environ() {
-		if pair := strings.SplitN(env, "=", 2); len(pair) == 2 {
-			envVars[pair[0]] = pair[1]
-		}
-	}
-
-	return envVars, nil
+	return getManagedEnvironmentVariables()
 }
 
-// Set environment variable with graceful permission handling
+// Set environment variable and add to managed list
 func (nm *networkManager) SetEnvironmentVariable(key, value string) error {
 	if key == "" {
 		return fmt.Errorf("environment variable key cannot be empty")
 	}
 
-	// Try to write to /etc/default/pifi first
-	envFile := "/etc/default/pifi"
+	// Set the environment variable
 	if err := setSystemEnv(key, value); err != nil {
-		// If no permission for system file, try user file
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return fmt.Errorf("failed to set environment variable: no write access to system files and cannot determine home directory")
-		}
-
-		userEnvFile := filepath.Join(homeDir, ".pifi_env")
-		if err := setSystemEnv(key, value); err != nil {
-			return fmt.Errorf("failed to set environment variable: %v", err)
-		}
-
-		log.Printf("Environment variable %s set in user file %s (insufficient permissions for system file)", key, userEnvFile)
-		return nil
+		return fmt.Errorf("failed to set environment variable: %v", err)
 	}
 
-	log.Printf("Environment variable %s set in system file %s", key, envFile)
+	// Add to managed list
+	if err := addToManagedList(key); err != nil {
+		log.Printf("Warning: failed to add %s to managed list: %v", key, err)
+		// Don't fail the whole operation, just log the warning
+	}
+
+	log.Printf("Environment variable %s set and added to managed list", key)
 	return nil
 }
 
-// Unset environment variable with graceful permission handling
+// Unset environment variable and remove from managed list
 func (nm *networkManager) UnsetEnvironmentVariable(key string) error {
 	if key == "" {
 		return fmt.Errorf("environment variable key cannot be empty")
 	}
 
-	errors := []string{}
-
-	// Try to remove from system files
-	systemFiles := []string{"/etc/default/pifi", "/etc/environment"}
-	for _, file := range systemFiles {
-		if err := removeSystemEnv(key); err != nil {
-			errors = append(errors, fmt.Sprintf("%s: %v", file, err))
-		}
+	// Remove the environment variable
+	if err := removeSystemEnv(key); err != nil {
+		log.Printf("Warning: failed to remove environment variable %s: %v", key, err)
 	}
 
-	// Try to remove from user files
-	homeDir, err := os.UserHomeDir()
-	if err == nil {
-		userFiles := []string{
-			filepath.Join(homeDir, ".pifi_env"),
-			filepath.Join(homeDir, ".bashrc"),
-		}
-		for _, file := range userFiles {
-			if err := removeSystemEnv(key); err != nil {
-				errors = append(errors, fmt.Sprintf("%s: %v", file, err))
-			}
-		}
+	// Remove from managed list
+	if err := removeFromManagedList(key); err != nil {
+		log.Printf("Warning: failed to remove %s from managed list: %v", key, err)
 	}
 
-	if len(errors) > 0 {
-		log.Printf("Some errors occurred while removing environment variable %s: %s", key, strings.Join(errors, "; "))
-	}
-
+	log.Printf("Environment variable %s removed and deleted from managed list", key)
 	return nil
 }
 
