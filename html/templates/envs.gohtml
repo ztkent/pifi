@@ -295,7 +295,13 @@
         </div>
         {{end}}
     {{else}}
-        <div class="no-vars">No environment variables found</div>
+        <div class="no-vars">
+            <p>No managed environment variables found</p>
+            <p style="font-size: 0.9em; color: #7f8c8d; margin-top: 10px;">
+                Variables created through this interface will appear here.<br>
+                Use the form above to add your first environment variable.
+            </p>
+        </div>
     {{end}}
 
     <div class="timestamp">Last Updated: {{.Timestamp.Format "2006-01-02 15:04:05"}}</div>

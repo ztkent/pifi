@@ -2,8 +2,10 @@ package networkmanager
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -147,4 +149,165 @@ func removeSystemEnv(key string) error {
 	os.Unsetenv(key)
 
 	return nil
+}
+
+const (
+	managedEnvFile = "/etc/default/pifi_managed_vars"
+)
+
+// ManagedEnvVars represents the list of environment variables managed by the service
+type ManagedEnvVars struct {
+	Variables []string `json:"variables"`
+}
+
+// readManagedEnvList reads the list of managed environment variables
+func readManagedEnvList() ([]string, error) {
+	// Try system location first
+	if vars, err := readManagedEnvFile(managedEnvFile); err == nil {
+		return vars, nil
+	}
+
+	// Try user location
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return []string{}, nil // Return empty list if can't determine home
+	}
+
+	userManagedFile := filepath.Join(homeDir, ".pifi_managed_vars")
+	if vars, err := readManagedEnvFile(userManagedFile); err == nil {
+		return vars, nil
+	}
+
+	// Return empty list if no file found
+	return []string{}, nil
+}
+
+// writeManagedEnvList writes the list of managed environment variables
+func writeManagedEnvList(variables []string) error {
+	managed := ManagedEnvVars{Variables: variables}
+	data, err := json.Marshal(managed)
+	if err != nil {
+		return err
+	}
+
+	// Try system location first
+	if err := writeManagedEnvFile(managedEnvFile, data); err != nil {
+		// Fallback to user location
+		homeDir, homeErr := os.UserHomeDir()
+		if homeErr != nil {
+			return fmt.Errorf("failed to write managed vars list: no write access to system files and cannot determine home directory")
+		}
+
+		userManagedFile := filepath.Join(homeDir, ".pifi_managed_vars")
+		if err := writeManagedEnvFile(userManagedFile, data); err != nil {
+			return fmt.Errorf("failed to write managed vars list: %v", err)
+		}
+	}
+
+	return nil
+}
+
+// addToManagedList adds a variable to the managed list
+func addToManagedList(key string) error {
+	variables, err := readManagedEnvList()
+	if err != nil {
+		return err
+	}
+
+	// Check if already in list
+	for _, v := range variables {
+		if v == key {
+			return nil // Already managed
+		}
+	}
+
+	// Add to list
+	variables = append(variables, key)
+	return writeManagedEnvList(variables)
+}
+
+// removeFromManagedList removes a variable from the managed list
+func removeFromManagedList(key string) error {
+	variables, err := readManagedEnvList()
+	if err != nil {
+		return err
+	}
+
+	// Remove from list
+	newVariables := make([]string, 0, len(variables))
+	for _, v := range variables {
+		if v != key {
+			newVariables = append(newVariables, v)
+		}
+	}
+
+	return writeManagedEnvList(newVariables)
+}
+
+// readManagedEnvFile reads managed variables from a JSON file
+func readManagedEnvFile(filename string) ([]string, error) {
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	var managed ManagedEnvVars
+	if err := json.Unmarshal(data, &managed); err != nil {
+		return nil, err
+	}
+
+	return managed.Variables, nil
+}
+
+// writeManagedEnvFile writes managed variables to a JSON file
+func writeManagedEnvFile(filename string, data []byte) error {
+	return os.WriteFile(filename, data, 0644)
+}
+
+// getManagedEnvironmentVariables returns only the environment variables that are managed by the service
+func getManagedEnvironmentVariables() (map[string]string, error) {
+	// Get the list of managed variables
+	managedVars, err := readManagedEnvList()
+	if err != nil {
+		return nil, err
+	}
+
+	if len(managedVars) == 0 {
+		return map[string]string{}, nil
+	}
+
+	// Get all environment variables
+	allEnvVars := make(map[string]string)
+
+	// Try to read from common environment sources
+	sources := []string{
+		"/etc/environment",
+		"/etc/default/pifi",
+		"/home/pi/.bashrc",
+	}
+
+	for _, source := range sources {
+		if vars, err := readEnvFile(source); err == nil {
+			for k, v := range vars {
+				allEnvVars[k] = v
+			}
+		}
+	}
+
+	// Add current process environment
+	for _, env := range os.Environ() {
+		if pair := strings.SplitN(env, "=", 2); len(pair) == 2 {
+			allEnvVars[pair[0]] = pair[1]
+		}
+	}
+
+	// Filter to only include managed variables
+	managedEnvVars := make(map[string]string)
+	for _, key := range managedVars {
+		if value, exists := allEnvVars[key]; exists {
+			managedEnvVars[key] = value
+		}
+	}
+
+	return managedEnvVars, nil
 }
