@@ -1,17 +1,30 @@
 <style>
-    body {
-        font-family: Arial, sans-serif;
-        margin: 40px;
-        background-color: #f5f6fa;
-    }
     .status-card {
         border: 1px solid #e1e1e1;
         border-radius: 12px;
-        padding: 30px;
-        width: 400px;
+        padding: 25px;
+        max-width: 450px;
+        width: 100%;
         margin: 0 auto;
         background-color: white;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    
+    /* Mobile responsive adjustments */
+    @media (max-width: 768px) {
+        .status-card {
+            padding: 20px;
+            margin: 0 10px;
+            border-radius: 8px;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .status-card {
+            padding: 15px;
+            margin: 0 5px;
+            border-radius: 6px;
+        }
     }
     .status-item {
         margin: 15px 0;
@@ -26,6 +39,29 @@
         color: #2d3436;
         display: inline-block;
         width: 140px;
+        vertical-align: top;
+    }
+    
+    /* Mobile responsive status labels */
+    @media (max-width: 480px) {
+        .status-item {
+            margin: 12px 0;
+            padding: 8px;
+        }
+        .status-label {
+            display: block;
+            width: 100%;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        .status-value {
+            display: block;
+            padding-left: 0;
+        }
+        h1 {
+            font-size: 1.4em;
+            margin-bottom: 20px;
+        }
     }
     .connected {
         color: #27ae60;

@@ -1,17 +1,46 @@
 <style>
-    body {
-        font-family: Arial, sans-serif;
-        margin: 40px;
-        background-color: #f5f6fa;
-    }
     .network-card {
         border: 1px solid #e1e1e1;
         border-radius: 12px;
-        padding: 30px;
-        width: 450px;
+        padding: 25px;
+        max-width: 500px;
+        width: 100%;
         margin: 0 auto;
         background-color: white;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+    }
+    
+    /* Large screen optimizations */
+    @media (min-width: 1200px) {
+        .network-card {
+            max-width: 600px;
+            padding: 35px;
+        }
+    }
+    
+    @media (min-width: 1400px) {
+        .network-card {
+            max-width: 700px;
+            padding: 40px;
+        }
+    }
+    
+    /* Mobile responsive adjustments */
+    @media (max-width: 768px) {
+        .network-card {
+            padding: 20px;
+            margin: 0 10px;
+            border-radius: 8px;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .network-card {
+            padding: 15px;
+            margin: 0 5px;
+            border-radius: 6px;
+        }
     }
     .network-item {
         margin: 15px 0;
@@ -27,33 +56,83 @@
         width: 140px;
         margin-right: 10px;
     }
+    
+    /* Mobile responsive adjustments */
+    @media (max-width: 480px) {
+        .network-item {
+            margin: 12px 0;
+            padding: 8px;
+        }
+        .network-label {
+            display: block;
+            width: 100%;
+            margin-bottom: 8px;
+            margin-right: 0;
+            font-size: 14px;
+        }
+        .network-select, .network-password {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        .connect-btn, .delete-btn, .autoconnect-btn, .connect-network-btn {
+            width: 100%;
+            margin: 5px 0;
+            margin-left: 0;
+            padding: 12px 16px;
+        }
+        #passwordField, #networkOptions {
+            margin-left: 0;
+        }
+        h1 {
+            font-size: 1.4em;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+    }
     .network-select {
-        padding: 8px;
-        border-radius: 4px;
+        padding: 12px;
+        border-radius: 6px;
         border: 1px solid #ddd;
-        width: 200px;
+        width: 240px;
+        font-size: 14px;
+        background-color: white;
     }
     .network-password {
-        padding: 8px;
-        border-radius: 4px;
+        padding: 12px;
+        border-radius: 6px;
         border: 1px solid #ddd;
         margin: 0px;
-        width: 200px;
+        width: 240px;
+        font-size: 14px;
     }
     .connect-btn, .delete-btn, .autoconnect-btn, .connect-network-btn {
-        padding: 8px 16px;
-        border-radius: 4px;
+        padding: 12px 20px;
+        border-radius: 6px;
         border: none;
         background-color: #2ecc71;
         color: white;
         cursor: pointer;
         margin-left: 10px;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+    .connect-btn:hover, .autoconnect-btn:hover, .connect-network-btn:hover {
+        background-color: #27ae60;
+        transform: translateY(-1px);
     }
     .delete-btn {
         background-color: #ff4757;
     }
+    .delete-btn:hover {
+        background-color: #ff3838;
+        transform: translateY(-1px);
+    }
     .autoconnect-btn {
-        background-color:rgb(18, 130, 243);
+        background-color: rgb(18, 130, 243);
+    }
+    .autoconnect-btn:hover {
+        background-color: rgb(15, 110, 200);
     }
 
     #passwordField {
