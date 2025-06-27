@@ -26,7 +26,6 @@ func main() {
 	flag.Parse()
 
 	r := mux.NewRouter()
-	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("html/static/"))))
 	r.HandleFunc("/", handlers.PiFiHandler(nm)).Methods("GET")
 	r.HandleFunc("/status", handlers.StatusHandler(nm)).Methods("GET")
 	r.HandleFunc("/network", handlers.NetworksHandler(nm)).Methods("GET")
