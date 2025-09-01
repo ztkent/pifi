@@ -170,7 +170,6 @@
         background-color: #ecf0f1;
         padding: 15px;
         border-radius: 8px;
-        margin-bottom: 20px;
     }
     .form-row {
         display: flex;
@@ -217,8 +216,7 @@
     }
     .lock-icon {
         cursor: pointer;
-        font-size: 1.2em;
-        padding: 5px;
+        padding: 1px;
         border-radius: 3px;
         transition: background-color 0.3s;
     }
@@ -299,7 +297,7 @@
 {{if .RequiresAuth}}
 <div class="env-card">
     <div class="env-title">
-        🔒 Environment Variables
+        Environment Variables
         <span class="lock-icon locked" onclick="showPasswordModal('unlock')" title="Remove password protection">🔓</span>
     </div>
     
@@ -356,7 +354,7 @@
                            placeholder="Password"
                            required>
                 {{end}}
-                <button class="btn btn-success" onclick="{{if .IsPasswordSet}}requireAuth('add'){{end}}">Add Variable</button>
+                <button class="btn btn-secondary" onclick="{{if .IsPasswordSet}}requireAuth('add'){{end}}">Add Variable</button>
             </div>
         </div>
     </div>
