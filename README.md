@@ -30,7 +30,7 @@ A simple web service that allows you to configure the WiFi settings of your Rasp
 You can interact with PiFi programmatically using its RESTful API.
 
 - Use HTTP requests to get and set WiFi configurations
-- Supports JSON format for easy integration
+- Returns JSON format for easy integration
 
 ### API Endpoints
 
