@@ -26,6 +26,8 @@ func main() {
 	flag.Parse()
 
 	r := mux.NewRouter()
+
+	// UI routes
 	r.HandleFunc("/", handlers.PiFiHandler(nm)).Methods("GET")
 	r.HandleFunc("/status", handlers.StatusHandler(nm)).Methods("GET")
 	r.HandleFunc("/network", handlers.NetworksHandler(nm)).Methods("GET")
@@ -41,6 +43,16 @@ func main() {
 	r.HandleFunc("/env/unset", handlers.UnsetEnvironmentHandler(nm)).Methods("POST")
 	r.HandleFunc("/env/set-password", handlers.SetEnvPasswordHandler(nm)).Methods("POST")
 	r.HandleFunc("/env/remove-password", handlers.RemoveEnvPasswordHandler(nm)).Methods("POST")
+
+	// API routes
+	r.HandleFunc("/api/status", handlers.GetNetworkStatusAPI(nm)).Methods("GET")
+	r.HandleFunc("/api/mode", handlers.SetWifiModeAPI(nm)).Methods("POST")
+	r.HandleFunc("/api/networks/available", handlers.FindAvailableNetworksAPI(nm)).Methods("GET")
+	r.HandleFunc("/api/networks/configured", handlers.GetConfiguredConnectionsAPI(nm)).Methods("GET")
+	r.HandleFunc("/api/networks/modify", handlers.ModifyNetworkConnectionAPI(nm)).Methods("POST")
+	r.HandleFunc("/api/networks/remove", handlers.RemoveNetworkConnectionAPI(nm)).Methods("DELETE")
+	r.HandleFunc("/api/networks/autoconnect", handlers.SetAutoConnectConnectionAPI(nm)).Methods("POST")
+	r.HandleFunc("/api/networks/connect", handlers.ConnectNetworkAPI(nm)).Methods("POST")
 
 	srv := &http.Server{
 		Handler:      r,
