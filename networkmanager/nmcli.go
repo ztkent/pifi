@@ -9,15 +9,6 @@ import (
 	"time"
 )
 
-func checkInterfaceExists(name string) bool {
-	cmd := exec.Command("iw", "dev")
-	output, err := cmd.Output()
-	if err != nil {
-		return false
-	}
-	return strings.Contains(string(output), name)
-}
-
 func verifyAPConnection(apName string) error {
 	cmd := exec.Command("nmcli", "connection", "show", apName)
 	if err := cmd.Run(); err != nil {
@@ -84,43 +75,6 @@ func getWifiSSID() string {
 		}
 	}
 	return ""
-}
-
-func getWifiIP() string {
-	cmd := exec.Command("nmcli", "-g", "IP4.ADDRESS", "dev", "show", "wlan0")
-	output, err := cmd.Output()
-	if err != nil {
-		return "not connected"
-	}
-
-	ip := strings.TrimSpace(string(output))
-	if ip == "" {
-		return "not connected"
-	}
-
-	if strings.Contains(ip, "/") {
-		ip = strings.Split(ip, "/")[0]
-	}
-
-	return ip
-}
-
-func getEthernetIP() string {
-	cmd := exec.Command("nmcli", "-g", "IP4.ADDRESS", "dev", "show", "eth0")
-	output, err := cmd.Output()
-	if err != nil {
-		return "not connected"
-	}
-
-	ip := strings.TrimSpace(string(output))
-	if ip == "" {
-		return "not connected"
-	}
-
-	if strings.Contains(ip, "/") {
-		ip = strings.Split(ip, "/")[0]
-	}
-	return ip
 }
 
 func getNetworkIps() NetworkIPs {
