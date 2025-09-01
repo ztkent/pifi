@@ -21,7 +21,8 @@ A simple web service that allows you to configure the WiFi settings of your Rasp
 - Navigate to `http://localhost:8088`
 - If using more than one PiFi device, connect directly to `http://<device-ip>:8088`
 
-<img width="720" height="400" alt="image" src="https://github.com/user-attachments/assets/247bc804-ae1a-47a4-a438-366ee5d4f6d3" />
+<img width="720" height="400" alt="network" src="https://github.com/user-attachments/assets/247bc804-ae1a-47a4-a438-366ee5d4f6d3" />
+<img width="720" height="400" alt="env" src="https://github.com/user-attachments/assets/73784fe6-ba88-4d16-83ad-1ab58847bc31" />
 
 ## Systemd Service
 
@@ -66,13 +67,3 @@ WantedBy=multi-user.target
 
 - Check the status of the service:
 `sudo systemctl status pifi.service`
-
-## Environment Variables
-
-PiFi supports managing environment variables through the web interface.  
-By default the device environment is unlocked. Users can lock the environment to prevent unauthorized changes.
-
-<img width="720" alt="image" src="https://github.com/user-attachments/assets/3f6b66a3-e9ef-4f2c-81b9-75847d16eb3f" />
-<img width="720" alt="image" src="https://github.com/user-attachments/assets/55a4bf1c-a9d7-4e40-91bc-b52d836dbbb2" />
-
-
