@@ -367,32 +367,12 @@
         <span id="message-text"></span>
     </div>
 
-    <!-- AP Mode Warning Modal -->
+    <!-- Mode Switch Warning Modal -->
     <div id="ap-warning-modal" class="modal-overlay" onclick="closeApWarningModal(event)">
         <div class="modal">
-            <h3>⚠️ Switching to Access Point Mode</h3>
-            <p>Switching this device to Access Point (AP) mode will:</p>
-            <ul>
-                <li>Disconnect from the current WiFi network</li>
-                <li>Create a new WiFi access point</li>
-                <li>Allow you to connect other devices to configure WiFi settings</li>
-            </ul>
-            
-            <div class="info-box">
-                <strong>Access Point Name:</strong> PiFi-AP-[Unique ID]<br>
-                <strong>IP Address:</strong> 10.42.0.1<br>
-                <strong>Web Interface:</strong> http://10.42.0.1:8088
+            <div id="modal-content">
+                <!-- Dynamic content will be inserted here -->
             </div>
-            
-            <div class="next-steps">
-                <strong>Next Steps:</strong>
-                <ol>
-                    <li>Connect your device (phone, laptop, etc.) to the PiFi-AP-[Unique ID] network</li>
-                    <li>Open a web browser and navigate to http://10.42.0.1:8088</li>
-                    <li>Configure your WiFi settings from there</li>
-                </ol>
-            </div>
-            
             <button class="close-modal" onclick="closeApWarningModal()">Got it</button>
             <div style="clear: both;"></div>
         </div>
@@ -465,6 +445,54 @@
         }
 
         function showApWarning() {
+            // Find the current mode from the mode select dropdown
+            const modeSelect = document.querySelector('select[name="mode"]');
+            const currentMode = modeSelect ? modeSelect.value : 'client';
+            const modalContent = document.getElementById('modal-content');
+            
+            if (currentMode === 'ap') {
+                // User is currently in AP mode, show warning about switching to client mode
+                modalContent.innerHTML = `
+                    <h3>⚠️ Switching to Client Mode</h3>
+                    <p>Switching this device to Client mode will:</p>
+                    <ul>
+                        <li>Disable the current WiFi access point</li>
+                        <li>Attempt to connect to a configured WiFi network</li>
+                    </ul>
+                    
+                    <div class="info-box">
+                        <strong>Important:</strong> Make sure you have a configured WiFi network with internet access.<br>
+                        <strong>Access Warning:</strong> If the device can't connect to WiFi, it will automatically switch back to AP mode after 30 seconds.
+                    </div>
+                `;
+            } else {
+                // User is currently in client mode, show warning about switching to AP mode
+                modalContent.innerHTML = `
+                    <h3>⚠️ Switching to Access Point Mode</h3>
+                    <p>Switching this device to Access Point (AP) mode will:</p>
+                    <ul>
+                        <li>Disconnect from the current WiFi network</li>
+                        <li>Create a new WiFi access point</li>
+                        <li>Allow you to connect other devices to configure WiFi settings</li>
+                    </ul>
+                    
+                    <div class="info-box">
+                        <strong>Access Point Name:</strong> PiFi-AP-[Unique ID]<br>
+                        <strong>IP Address:</strong> 10.42.0.1<br>
+                        <strong>Web Interface:</strong> http://10.42.0.1:8088
+                    </div>
+                    
+                    <div class="next-steps">
+                        <strong>Next Steps:</strong>
+                        <ol>
+                            <li>Connect your device (phone, laptop, etc.) to the PiFi-AP-[Unique ID] network</li>
+                            <li>Open a web browser and navigate to http://10.42.0.1:8088</li>
+                            <li>Configure your WiFi settings from there</li>
+                        </ol>
+                    </div>
+                `;
+            }
+            
             document.getElementById('ap-warning-modal').classList.add('show');
         }
 
@@ -475,7 +503,7 @@
             }
         }
 
-        // Add the warning icon next to AP mode dropdowns
+        // Add the warning icon next to mode dropdowns
         document.body.addEventListener('htmx:afterSwap', function(evt) {
             // Look specifically for the Network Mode select element
             const selects = evt.detail.target.querySelectorAll('select[name="mode"]');
@@ -485,7 +513,7 @@
                     const warningIcon = document.createElement('span');
                     warningIcon.className = 'warning-icon';
                     warningIcon.innerHTML = '⚠️';
-                    warningIcon.title = 'Click for important information about AP mode';
+                    warningIcon.title = 'Click for important information about switching modes';
                     warningIcon.onclick = showApWarning;
                     select.parentNode.insertBefore(warningIcon, select.nextSibling);
                 }
