@@ -28,9 +28,7 @@
                     {{if ne $.CurrentSSID .SSID}}
                     <button 
                         class="btn btn-primary btn-sm"
-                        hx-post="/connect"
-                        hx-vals='{"network": "{{.SSID}}"}'
-                        hx-swap="none">
+                        onclick="confirmNetworkConnect('{{.SSID}}')">
                         Connect
                     </button>
                     {{end}}

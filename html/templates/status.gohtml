@@ -53,13 +53,13 @@
 
     <article class="card">
         <h2 class="card-header">Network Mode</h2>
-        <form hx-post="/setmode" hx-swap="none" class="form-group">
+        <form id="mode-form" class="form-group">
             <label class="form-label" for="mode">Select Mode:</label>
-            <select name="mode" id="mode" class="form-select">
+            <select name="mode" id="mode" class="form-select" data-initial-mode="{{.NetworkInfo.Mode}}" onchange="handleModeChange()">
                 <option value="client" {{if eq .NetworkInfo.Mode "client"}}selected{{end}}>Client Mode</option>
                 <option value="ap" {{if eq .NetworkInfo.Mode "ap"}}selected{{end}}>Access Point Mode</option>
             </select>
-            <button type="submit" class="btn btn-primary btn-block mt-2">Update Mode</button>
+            <button type="button" id="update-mode-btn" class="btn btn-primary btn-block mt-2" onclick="confirmModeChange()" disabled>Update Mode</button>
         </form>
         <p class="text-muted mt-2">Last updated: {{.Timestamp.Format "2006-01-02 15:04:05"}}</p>
     </article>

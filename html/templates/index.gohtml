@@ -13,6 +13,18 @@
         <button class="toast-close" onclick="hideToast()">×</button>
     </div>
 
+    <!-- Confirmation Modal -->
+    <div id="confirm-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 id="modal-title" class="modal-title">Confirm Action</h3>
+            <p id="modal-message" class="modal-message"></p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button id="modal-confirm-btn" class="btn btn-primary">Confirm</button>
+            </div>
+        </div>
+    </div>
+
     <header class="app-header">
         <div class="header-content">
             <div class="header-brand">
@@ -78,6 +90,138 @@
             document.getElementById('toast').classList.add('hidden');
         }
 
+        // Modal functions
+        function showModal(title, message, onConfirm) {
+            const modal = document.getElementById('confirm-modal');
+            const titleEl = document.getElementById('modal-title');
+            const messageEl = document.getElementById('modal-message');
+            const confirmBtn = document.getElementById('modal-confirm-btn');
+            
+            titleEl.textContent = title;
+            messageEl.innerHTML = message;
+            
+            // Clone and replace to remove old listeners
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+            newConfirmBtn.addEventListener('click', function() {
+                closeModal();
+                onConfirm();
+            });
+            
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('confirm-modal').classList.add('hidden');
+        }
+
+        // Close modal on overlay click
+        document.getElementById('confirm-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+
+        // Mode change handling
+        function handleModeChange() {
+            const select = document.getElementById('mode');
+            const btn = document.getElementById('update-mode-btn');
+            if (select && btn) {
+                const initialMode = select.getAttribute('data-initial-mode');
+                const currentMode = select.value;
+                btn.disabled = (initialMode === currentMode);
+            }
+        }
+
+        function confirmModeChange() {
+            const select = document.getElementById('mode');
+            if (!select) return;
+            
+            const newMode = select.value;
+            let title, message;
+            
+            if (newMode === 'ap') {
+                title = 'Switch to Access Point Mode?';
+                message = 'Switching to Access Point mode will change how you connect to this device.<br><br>' +
+                    '<strong>After the switch:</strong><br>' +
+                    '• Connect to the device\'s WiFi network (PiFi-AP-XXXX)<br>' +
+                    '• Access this page at <strong>10.42.0.1:8088</strong><br><br>' +
+                    'This page will become unavailable on the current network. Are you sure you want to continue?';
+            } else {
+                title = 'Switch to Client Mode?';
+                message = 'Switching to Client mode will disconnect the Access Point.<br><br>' +
+                    '<strong>After the switch:</strong><br>' +
+                    '• The device will connect to an "auto-connect" configured WiFi network<br>' +
+                    '• Access this page using the device\'s new IP address on that network<br><br>' +
+                    'This page will become unavailable at the current address. Are you sure you want to continue?';
+            }
+            
+            showModal(title, message, function() {
+                // Perform the mode change
+                fetch('/setmode', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: 'mode=' + encodeURIComponent(newMode)
+                }).then(response => {
+                    if (response.ok) {
+                        showToast('Network mode updated. Page may become unavailable...', 'success');
+                        setTimeout(() => {
+                            htmx.trigger(document.body, 'networkupdate');
+                        }, 1000);
+                    } else {
+                        response.text().then(text => {
+                            showToast('Error: ' + text, 'error');
+                        });
+                    }
+                }).catch(err => {
+                    showToast('Network error: Unable to connect to server', 'error');
+                });
+            });
+        }
+
+        // Network connect confirmation
+        function confirmNetworkConnect(ssid) {
+            const title = 'Connect to Network?';
+            const message = 'Connecting to <strong>' + ssid + '</strong> will disconnect you from the current network.<br><br>' +
+                '<strong>After connecting:</strong><br>' +
+                '• The device will attempt to join the new network<br>' +
+                '• Access this page using the device\'s new IP address on that network<br><br>' +
+                'This page will become unavailable. Are you sure you want to continue?';
+            
+            showModal(title, message, function() {
+                // Perform the connection
+                fetch('/connect', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: 'network=' + encodeURIComponent(ssid)
+                }).then(response => {
+                    if (response.ok) {
+                        showToast('Connecting to ' + ssid + '. Page may become unavailable...', 'success');
+                        setTimeout(() => {
+                            htmx.trigger(document.body, 'networkupdate');
+                        }, 1000);
+                    } else {
+                        response.text().then(text => {
+                            showToast('Error: ' + text, 'error');
+                        });
+                    }
+                }).catch(err => {
+                    showToast('Network error: Unable to connect to server', 'error');
+                });
+            });
+        }
+
         document.body.addEventListener('htmx:afterRequest', function(event) {
             const detail = event.detail;
             const path = detail.pathInfo.requestPath;
@@ -89,17 +233,9 @@
                 } else if (path === '/remove-network') {
                     showToast('Network removed', 'success');
                     htmx.trigger(document.body, 'networkupdate');
-                } else if (path === '/connect') {
-                    showToast('Connected to network', 'success');
-                    htmx.trigger(document.body, 'networkupdate');
                 } else if (path === '/autoconnect-network') {
                     showToast('Auto-connect settings updated', 'success');
                     htmx.trigger(document.body, 'networkupdate');
-                } else if (path === '/setmode') {
-                    showToast('Network mode updated', 'success');
-                    setTimeout(() => {
-                        htmx.trigger(document.body, 'networkupdate');
-                    }, 1000);
                 }
             }
         });
