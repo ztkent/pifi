@@ -1,6 +1,6 @@
 # PiFi
 
-Modern WiFi configuration tool for Raspberry Pi.
+Modern WiFi configuration tool for Raspberry Pi.  
 Remotely manage IoT projects without physical access to the device.
 
 Works with Bookworm using NetworkManager.  
@@ -10,21 +10,20 @@ Tested on Raspberry Pi: 2B, Zero W, Zero 2 W, 4 and 5.
 
 - Web Interface for simple management
 - API for programmatic access
-- Access point mode to manage offline devices
-- Systemd service for automatic network configuration
+- Supports automatically managing offline devices
 
 ## Web Interface
 
-A simple web service that allows you to configure the WiFi settings of your Raspberry Pi.
+A web service that allows you to configure the WiFi settings of your Raspberry Pi.
 
 - Connect to the same network as your device running PiFi
 - Navigate directly to `http://<device-ip>:8088`
 
 #### Client Mode
-<img width="1200" height="600" alt="Client" src="https://github.com/user-attachments/assets/2de5ba45-c0e4-4135-a0d0-f6c58088268d" />
+<img width="1000" height="500" alt="Client" src="https://github.com/user-attachments/assets/2de5ba45-c0e4-4135-a0d0-f6c58088268d" />
 
 #### Access Point Mode
-<img width="1200" height="600" alt="image" src="https://github.com/user-attachments/assets/67f22add-f276-490b-bd59-f903a335c596" />
+<img width="1000" height="500" alt="image" src="https://github.com/user-attachments/assets/67f22add-f276-490b-bd59-f903a335c596" />
 
 
 ## API
@@ -47,39 +46,49 @@ You can interact with PiFi programmatically using its API.
 | `POST` | `/api/networks/autoconnect` | Set auto-connect | `{"ssid": "MyWiFi", "autoConnect": true}` |
 | `POST` | `/api/networks/connect` | Connect to network | `{"ssid": "MyWiFi"}` |
 
-## Setup
+## Service Setup
 
-`pifi.service` is a daemon that runs on boot and helps you configure the WiFi settings of your Raspberry Pi.  
+Run PiFi as a systemd service for automatic network management on boot.
 
-- If the service detects your device is offline, it will enable access point mode
-- Connect a client to the access point 
-  - The AP should be named `PiFi-AP-<1234>`
-- Navigate to `http://10.42.0.1:8088` to view the web interface
-- View the available networks, and connect your target network
+### Automatic Access Point Mode
 
-### Create Systemd Service
+When configured as a service, PiFi automatically enables access point mode if no network connection is detected:
 
-- Create the new systemd service file:
-`sudo vim /etc/systemd/system/pifi.service`
+- Connect to the `PiFi-AP-<1234>` access point
+- Navigate to `http://10.42.0.1:8088`
+- Select your WiFi network and connect
 
-    ```shell
-    [Unit]
-    Description=PiFi Service
-    After=network.target
+### Install as Systemd Service
 
-    [Service]
-    ExecStart=<path-to-pifi-binary>
-    Environment="PATH=/usr/bin:/usr/sbin"
-    EnvironmentFile=-/etc/default/pifi
-    WorkingDirectory=<directory-of-pifi-binary>
-    User=root
-    Restart=always
+Create the service file:
 
-    [Install]
-    WantedBy=multi-user.target
-    ```
+```bash
+sudo nano /etc/systemd/system/pifi.service
+```
 
-- Reload systemd to recognize the new service: `sudo systemctl daemon-reload`
-- Enable the service to start on boot: `sudo systemctl enable pifi.service`
-- Start the service immediately: `sudo systemctl start pifi.service`
-- Check the status of the service: `sudo systemctl status pifi.service`
+Add the following configuration (update paths to match your installation):
+
+```shell
+[Unit]
+Description=PiFi Service
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/pifi
+Environment="PATH=/usr/bin:/usr/sbin"
+WorkingDirectory=/usr/local/bin
+User=root
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start the service:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable pifi.service
+sudo systemctl start pifi.service
+sudo systemctl status pifi.service
+```
