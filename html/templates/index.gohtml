@@ -380,7 +380,6 @@
 
     <div class="nav-tabs">
         <button class="nav-tab active" onclick="switchTab('network-status')">Network Status</button>
-        <button class="nav-tab" onclick="switchTab('environment')">Environment</button>
     </div>
 
     <div id="network-status" class="tab-content active">
@@ -404,19 +403,6 @@
                     <div class="spinner"></div>
                     <div class="loading-text">Loading networks...</div>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="environment" class="tab-content">
-        <div class="container"
-             hx-get="/environment"
-             hx-trigger="load, envupdate"
-             hx-swap="innerHTML"
-             hx-indicator=".env-spinner">
-            <div class="loading-spinner env-spinner">
-                <div class="spinner"></div>
-                <div class="loading-text">Loading environment...</div>
             </div>
         </div>
     </div>
@@ -558,18 +544,7 @@
                 if (evt.detail.successful) {
                     showSuccessMessage('Network mode updated');
                 } 
-            } else if (evt.detail.pathInfo.requestPath === '/env/set') {
-                if (evt.detail.successful) {
-                    htmx.trigger('.container[hx-get="/environment"]', 'envupdate');
-                    // Clear the form
-                    document.querySelector('input[name="key"]').value = '';
-                    document.querySelector('input[name="value"]').value = '';
-                } 
-            } else if (evt.detail.pathInfo.requestPath === '/env/unset') {
-                if (evt.detail.successful) {
-                    showSuccessMessage('Environment variable deleted');
-                    htmx.trigger('.container[hx-get="/environment"]', 'envupdate');
-                } 
+
             }
         });
 

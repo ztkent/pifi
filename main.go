@@ -38,12 +38,6 @@ func main() {
 	r.HandleFunc("/autoconnect-network", handlers.AutoConnectNetworkHandler(nm)).Methods("POST")
 	r.HandleFunc("/connect", handlers.ConnectNetworkHandler(nm)).Methods("POST")
 
-	r.HandleFunc("/environment", handlers.EnvironmentHandler(nm)).Methods("GET", "POST")
-	r.HandleFunc("/env/set", handlers.SetEnvironmentHandler(nm)).Methods("POST")
-	r.HandleFunc("/env/unset", handlers.UnsetEnvironmentHandler(nm)).Methods("POST")
-	r.HandleFunc("/env/set-password", handlers.SetEnvPasswordHandler(nm)).Methods("POST")
-	r.HandleFunc("/env/remove-password", handlers.RemoveEnvPasswordHandler(nm)).Methods("POST")
-
 	// API routes
 	r.HandleFunc("/api/status", handlers.GetNetworkStatusAPI(nm)).Methods("GET")
 	r.HandleFunc("/api/mode", handlers.SetWifiModeAPI(nm)).Methods("POST")

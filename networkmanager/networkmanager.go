@@ -1,14 +1,10 @@
 package networkmanager
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"log"
 	"math/rand"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -17,9 +13,8 @@ import (
 )
 
 const (
-	ModeClient   = "client"
-	ModeAP       = "ap"
-	passwordFile = "/etc/default/pifi_env_password"
+	ModeClient = "client"
+	ModeAP     = "ap"
 )
 
 type NetworkStatus struct {
@@ -63,15 +58,6 @@ type NetworkManager interface {
 	RemoveNetworkConnection(ssid string) error
 	SetAutoConnectConnection(ssid string, autoConnect bool) error
 	ConnectNetwork(ssid string) error
-
-	// Environment Management
-	GetEnvironmentVariables() (map[string]string, error)
-	SetEnvironmentVariable(key, value string) error
-	UnsetEnvironmentVariable(key string) error
-	SetEnvPassword(password string) error
-	RemoveEnvPassword() error
-	ValidateEnvPassword(password string) (bool, error)
-	IsEnvPasswordSet() bool
 }
 
 type networkManager struct {
@@ -374,52 +360,6 @@ func (nm *networkManager) ConnectNetwork(ssid string) error {
 	return nil
 }
 
-// Get environment variables - now returns only managed variables
-func (nm *networkManager) GetEnvironmentVariables() (map[string]string, error) {
-	return getManagedEnvironmentVariables()
-}
-
-// Set environment variable and add to managed list
-func (nm *networkManager) SetEnvironmentVariable(key, value string) error {
-	if key == "" {
-		return fmt.Errorf("environment variable key cannot be empty")
-	}
-
-	// Set the environment variable
-	if err := setSystemEnv(key, value); err != nil {
-		return fmt.Errorf("failed to set environment variable: %v", err)
-	}
-
-	// Add to managed list
-	if err := addToManagedList(key); err != nil {
-		log.Printf("Warning: failed to add %s to managed list: %v", key, err)
-		// Don't fail the whole operation, just log the warning
-	}
-
-	log.Printf("Environment variable %s set and added to managed list", key)
-	return nil
-}
-
-// Unset environment variable and remove from managed list
-func (nm *networkManager) UnsetEnvironmentVariable(key string) error {
-	if key == "" {
-		return fmt.Errorf("environment variable key cannot be empty")
-	}
-
-	// Remove the environment variable
-	if err := removeSystemEnv(key); err != nil {
-		log.Printf("Warning: failed to remove environment variable %s: %v", key, err)
-	}
-
-	// Remove from managed list
-	if err := removeFromManagedList(key); err != nil {
-		log.Printf("Warning: failed to remove %s from managed list: %v", key, err)
-	}
-
-	log.Printf("Environment variable %s removed and deleted from managed list", key)
-	return nil
-}
-
 // Enable the AP if there's no internet connection for a certain amount of time. This will run in the background.
 func (nm *networkManager) ManageOfflineAP(connectionLossTimeout time.Duration) error {
 	for {
@@ -438,113 +378,4 @@ func (nm *networkManager) ManageOfflineAP(connectionLossTimeout time.Duration) e
 		}
 		time.Sleep(60 * time.Second)
 	}
-}
-
-func (nm *networkManager) SetEnvPassword(password string) error {
-	if password == "" {
-		return fmt.Errorf("password cannot be empty")
-	}
-
-	// Hash the password
-	hash := sha256.Sum256([]byte(password))
-	hashedPassword := hex.EncodeToString(hash[:])
-
-	// Try to write to system location first, fallback to user directory
-	if err := writePasswordFile(passwordFile, hashedPassword); err != nil {
-		homeDir, homeErr := os.UserHomeDir()
-		if homeErr != nil {
-			return fmt.Errorf("failed to set password: no write access to system files and cannot determine home directory")
-		}
-
-		userPasswordFile := filepath.Join(homeDir, ".pifi_env_password")
-		if err := writePasswordFile(userPasswordFile, hashedPassword); err != nil {
-			return fmt.Errorf("failed to set password: %v", err)
-		}
-	}
-
-	return nil
-}
-
-// RemoveEnvPassword removes the password protection
-func (nm *networkManager) RemoveEnvPassword() error {
-	// Try to remove from both system and user locations
-	systemRemoved := os.Remove(passwordFile) == nil
-
-	homeDir, err := os.UserHomeDir()
-	userRemoved := false
-	if err == nil {
-		userPasswordFile := filepath.Join(homeDir, ".pifi_env_password")
-		userRemoved = os.Remove(userPasswordFile) == nil
-	}
-
-	if !systemRemoved && !userRemoved {
-		return fmt.Errorf("no password file found to remove")
-	}
-
-	return nil
-}
-
-// ValidateEnvPassword validates the provided password against the stored hash
-func (nm *networkManager) ValidateEnvPassword(password string) (bool, error) {
-	// Try system location first
-	if hash, err := readPasswordFile(passwordFile); err == nil {
-		return validatePassword(password, hash), nil
-	}
-
-	// Try user location
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return false, fmt.Errorf("cannot determine home directory")
-	}
-
-	userPasswordFile := filepath.Join(homeDir, ".pifi_env_password")
-	if hash, err := readPasswordFile(userPasswordFile); err == nil {
-		return validatePassword(password, hash), nil
-	}
-
-	return false, fmt.Errorf("no password file found")
-}
-
-// IsEnvPasswordSet checks if a password is currently set
-func (nm *networkManager) IsEnvPasswordSet() bool {
-	// Check system location
-	if _, err := readPasswordFile(passwordFile); err == nil {
-		return true
-	}
-
-	// Check user location
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return false
-	}
-
-	userPasswordFile := filepath.Join(homeDir, ".pifi_env_password")
-	_, err = readPasswordFile(userPasswordFile)
-	return err == nil
-}
-
-// Helper functions
-func writePasswordFile(filename, hashedPassword string) error {
-	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	_, err = file.WriteString(hashedPassword)
-	return err
-}
-
-func readPasswordFile(filename string) (string, error) {
-	data, err := os.ReadFile(filename)
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(string(data)), nil
-}
-
-func validatePassword(password, storedHash string) bool {
-	hash := sha256.Sum256([]byte(password))
-	providedHash := hex.EncodeToString(hash[:])
-	return providedHash == storedHash
 }

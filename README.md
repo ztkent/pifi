@@ -1,6 +1,6 @@
 # PiFi
 
-Modern headless WiFi configuration tool for Raspberry Pi.
+Modern WiFi configuration tool for Raspberry Pi.
 Remotely manage IoT projects without physical access to the device.
 
 Works with Bookworm using NetworkManager.  
@@ -23,7 +23,6 @@ A simple web service that allows you to configure the WiFi settings of your Rasp
 - If using more than one PiFi device, connect directly to `http://<device-ip>:8088`
 
 <img width="720" height="400" alt="network" src="https://github.com/user-attachments/assets/247bc804-ae1a-47a4-a438-366ee5d4f6d3" />
-<img width="720" height="400" alt="env" src="https://github.com/user-attachments/assets/73784fe6-ba88-4d16-83ad-1ab58847bc31" />
 
 ## API
 
