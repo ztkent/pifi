@@ -8,25 +8,28 @@ Tested on Raspberry Pi: 2B, Zero W, Zero 2 W, 4 and 5.
 
 ## Key Features
 
-- Web Interface for WiFi management
+- Web Interface for simple management
 - API for programmatic access
 - Access point mode to manage offline devices
 - Systemd service for automatic network configuration
-- Environment variable management
 
 ## Web Interface
 
 A simple web service that allows you to configure the WiFi settings of your Raspberry Pi.
 
 - Connect to the same network as your device running PiFi
-- Navigate to `http://localhost:8088`
-- If using more than one PiFi device, connect directly to `http://<device-ip>:8088`
+- Navigate directly to `http://<device-ip>:8088`
 
-<img width="720" height="400" alt="network" src="https://github.com/user-attachments/assets/247bc804-ae1a-47a4-a438-366ee5d4f6d3" />
+#### Client Mode
+<img width="1200" height="600" alt="Client" src="https://github.com/user-attachments/assets/2de5ba45-c0e4-4135-a0d0-f6c58088268d" />
+
+#### Access Point Mode
+<img width="1200" height="600" alt="image" src="https://github.com/user-attachments/assets/67f22add-f276-490b-bd59-f903a335c596" />
+
 
 ## API
 
-You can interact with PiFi programmatically using its RESTful API.
+You can interact with PiFi programmatically using its API.
 
 - Use HTTP requests to get and set WiFi configurations
 - Returns JSON format for easy integration
