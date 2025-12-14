@@ -84,6 +84,13 @@ Restart=always
 WantedBy=multi-user.target
 ```
 
+After modifying the service file, reload and restart:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart pifi.service
+```
+
 Enable and start the service:
 
 ```bash
@@ -92,3 +99,12 @@ sudo systemctl enable pifi.service
 sudo systemctl start pifi.service
 sudo systemctl status pifi.service
 ```
+
+### Configuration Options
+
+PiFi supports the following command-line flags:
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-auto` | `true` | Enable automatic AP mode when no internet connection is detected |
+| `-timeout` | `30` | Seconds to wait offline before enabling AP mode |
