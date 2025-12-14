@@ -577,7 +577,7 @@ body {
     border-radius: var(--radius);
     box-shadow: var(--shadow-lg);
     padding: 1.5rem;
-    max-width: 450px;
+    max-width: 475px;
     width: 90%;
     animation: scaleIn 0.2s ease-out;
 }
@@ -611,6 +611,91 @@ body {
     display: flex;
     gap: 0.75rem;
     justify-content: flex-end;
+}
+
+/* Connection Modal States */
+.connection-progress {
+    text-align: center;
+    padding: 1rem 0;
+}
+
+.connection-progress .spinner {
+    margin: 0 auto 1rem auto;
+}
+
+.connection-progress p {
+    margin-bottom: 0.5rem;
+}
+
+.connection-note {
+    font-size: 0.75rem;
+    color: var(--slate-500);
+    font-style: italic;
+}
+
+.connection-success,
+.connection-failure {
+    padding: 0.5rem 0;
+}
+
+.connection-success p,
+.connection-failure p {
+    margin-bottom: 0.75rem;
+}
+
+.connection-instructions {
+    background-color: var(--slate-100);
+    border-radius: var(--radius);
+    padding: 1rem;
+    margin: 1rem 0;
+}
+
+.connection-instructions p {
+    margin-bottom: 0.5rem;
+}
+
+.connection-instructions ol,
+.connection-instructions ul {
+    margin-left: 1.25rem;
+    margin-top: 0.5rem;
+}
+
+.connection-instructions li {
+    margin-bottom: 0.25rem;
+}
+
+.connection-instructions a {
+    color: var(--blue-600);
+    font-weight: 500;
+}
+
+.connection-error-message {
+    color: var(--red-600);
+    font-weight: 500;
+    padding: 0.75rem;
+    background-color: rgba(239, 68, 68, 0.1);
+    border-radius: var(--radius);
+    border-left: 3px solid var(--red-500);
+}
+
+.connection-fallback-success {
+    color: var(--green-600);
+    font-weight: 500;
+    padding: 0.5rem 0.75rem;
+    background-color: rgba(16, 185, 129, 0.1);
+    border-radius: var(--radius);
+}
+
+.connection-fallback-failed {
+    color: var(--orange-600);
+    font-weight: 500;
+    padding: 0.5rem 0.75rem;
+    background-color: rgba(245, 158, 11, 0.1);
+    border-radius: var(--radius);
+}
+
+#connection-modal .modal-content {
+    max-width: 500px;
 }
 
 /* Responsive Design */

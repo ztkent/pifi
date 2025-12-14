@@ -25,6 +25,23 @@
         </div>
     </div>
 
+    <!-- Connection Progress Modal -->
+    <div id="connection-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 id="connection-modal-title" class="modal-title">Connecting...</h3>
+            <div id="connection-modal-body" class="modal-message">
+                <div class="connection-progress">
+                    <div class="spinner"></div>
+                    <p>Attempting to connect to the network...</p>
+                    <p class="connection-note">This may take up to 15 seconds.</p>
+                </div>
+            </div>
+            <div id="connection-modal-actions" class="modal-actions hidden">
+                <button class="btn btn-primary" onclick="closeConnectionModal()">OK</button>
+            </div>
+        </div>
+    </div>
+
     <header class="app-header">
         <div class="header-content">
             <div class="header-brand">
@@ -188,36 +205,192 @@
             });
         }
 
+        // Connection modal functions
+        function showConnectionModal() {
+            const modal = document.getElementById('connection-modal');
+            const title = document.getElementById('connection-modal-title');
+            const body = document.getElementById('connection-modal-body');
+            const actions = document.getElementById('connection-modal-actions');
+            
+            title.textContent = 'Connecting...';
+            body.innerHTML = `
+                <div class="connection-progress">
+                    <div class="spinner"></div>
+                    <p>Attempting to connect to the network...</p>
+                    <p class="connection-note">This may take up to 15 seconds.</p>
+                </div>
+            `;
+            actions.classList.add('hidden');
+            modal.classList.remove('hidden');
+        }
+
+        function showConnectionSuccess(result) {
+            const title = document.getElementById('connection-modal-title');
+            const body = document.getElementById('connection-modal-body');
+            const actions = document.getElementById('connection-modal-actions');
+            
+            title.textContent = '✓ Connection Successful';
+            
+            let newUrl = '';
+            if (result.newIP) {
+                newUrl = `http://${result.newIP}:8088`;
+            }
+            
+            body.innerHTML = `
+                <div class="connection-success">
+                    <p>Successfully connected to <strong>${result.newSSID}</strong></p>
+                    ${result.newIP ? `<p>New IP Address: <strong>${result.newIP}</strong></p>` : ''}
+                    <div class="connection-instructions">
+                        <p><strong>To continue using PiFi:</strong></p>
+                        <ol>
+                            <li>Switch your device to the <strong>${result.newSSID}</strong> network</li>
+                            ${newUrl ? `<li>Open <a href="${newUrl}" target="_blank">${newUrl}</a></li>` : '<li>Find the device\'s IP on your new network</li>'}
+                        </ol>
+                    </div>
+                    <p class="connection-note">This page will no longer respond on the current network.</p>
+                </div>
+            `;
+            actions.classList.remove('hidden');
+        }
+
+        function showConnectionFailure(result) {
+            const title = document.getElementById('connection-modal-title');
+            const body = document.getElementById('connection-modal-body');
+            const actions = document.getElementById('connection-modal-actions');
+            
+            title.textContent = '✗ Connection Failed';
+            
+            let fallbackMsg = '';
+            if (result.fallbackUsed && result.fallbackSSID) {
+                fallbackMsg = `<p class="connection-fallback-success">✓ Restored connection to <strong>${result.fallbackSSID}</strong></p>`;
+            } else if (result.fallbackSSID) {
+                fallbackMsg = `<p class="connection-fallback-failed">⚠ Could not restore previous connection to ${result.fallbackSSID}</p>`;
+            }
+            
+            body.innerHTML = `
+                <div class="connection-failure">
+                    <p class="connection-error-message">${result.errorMessage || 'Failed to connect to the network.'}</p>
+                    ${fallbackMsg}
+                    <div class="connection-instructions">
+                        <p><strong>Possible solutions:</strong></p>
+                        <ul>
+                            ${result.errorType === 'wrong_password' ? '<li>Check that the password is correct</li>' : ''}
+                            ${result.errorType === 'network_not_found' ? '<li>Make sure the network is in range</li><li>Check that the network name is correct</li>' : ''}
+                            ${result.errorType === 'timeout' ? '<li>Move closer to the network</li><li>Check that the password is correct</li>' : ''}
+                            <li>Try scanning for networks again</li>
+                        </ul>
+                    </div>
+                </div>
+            `;
+            actions.classList.remove('hidden');
+        }
+
+        // Poll to check if server is still reachable after network error
+        // If reachable, fallback happened (failure). If not, success (server moved).
+        async function checkConnectionOutcome(ssid) {
+            const title = document.getElementById('connection-modal-title');
+            const body = document.getElementById('connection-modal-body');
+            
+            title.textContent = 'Checking connection...';
+            body.innerHTML = `
+                <div class="connection-progress">
+                    <div class="spinner"></div>
+                    <p>Verifying connection status...</p>
+                    <p class="connection-note">Please wait while we check the result.</p>
+                </div>
+            `;
+            
+            // Wait for fallback to complete (up to 12 seconds with retries)
+            const maxAttempts = 6;
+            const delayMs = 2000;
+            
+            for (let i = 0; i < maxAttempts; i++) {
+                await new Promise(resolve => setTimeout(resolve, delayMs));
+                
+                try {
+                    // Add timeout to polling requests
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout per attempt
+                    
+                    const response = await fetch('/api/status', { 
+                        method: 'GET',
+                        cache: 'no-store',
+                        signal: controller.signal
+                    });
+                    
+                    clearTimeout(timeoutId);
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        // Server is reachable - fallback happened, connection failed
+                        const currentSSID = data.data?.WifiSSID || '';
+                        showConnectionFailure({
+                            errorType: 'timeout',
+                            errorMessage: 'Connection to ' + ssid + ' failed.',
+                            fallbackSSID: currentSSID,
+                            fallbackUsed: true
+                        });
+                        return;
+                    }
+                } catch (e) {
+                    // Server not reachable (timeout or network error) - might be on new network
+                    // Continue checking in case it's just slow
+                }
+            }
+            
+            // After all attempts, server is not reachable - assume success
+            showConnectionSuccess({ 
+                newSSID: ssid, 
+                newIP: '' 
+            });
+        }
+
+        function closeConnectionModal() {
+            document.getElementById('connection-modal').classList.add('hidden');
+            htmx.trigger(document.body, 'networkupdate');
+        }
+
         // Network connect confirmation
         function confirmNetworkConnect(ssid) {
             const title = 'Connect to Network?';
-            const message = 'Connecting to <strong>' + ssid + '</strong> will disconnect you from the current network.<br><br>' +
-                '<strong>After connecting:</strong><br>' +
-                '• The device will attempt to join the new network<br>' +
-                '• Access this page using the device\'s new IP address on that network<br><br>' +
-                'This page will become unavailable. Are you sure you want to continue?';
+            const message = 'Connecting to <strong>' + ssid + '</strong> will attempt to join the new network.<br><br>' +
+                '<strong>What happens:</strong><br>' +
+                '• The device will try to connect (up to 15 seconds)<br>' +
+                '• If successful, you\'ll need to switch networks to access this page<br>' +
+                '• If it fails, the current connection will be restored<br><br>' +
+                'Continue?';
             
             showModal(title, message, function() {
-                // Perform the connection
-                fetch('/connect', {
+                // Show progress modal
+                showConnectionModal();
+                
+                // Create abort controller for timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+                
+                // Perform the connection via API
+                fetch('/api/networks/connect', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Content-Type': 'application/json',
                     },
-                    body: 'network=' + encodeURIComponent(ssid)
+                    body: JSON.stringify({ ssid: ssid }),
+                    signal: controller.signal
                 }).then(response => {
-                    if (response.ok) {
-                        showToast('Connecting to ' + ssid + '. Page may become unavailable...', 'success');
-                        setTimeout(() => {
-                            htmx.trigger(document.body, 'networkupdate');
-                        }, 1000);
+                    clearTimeout(timeoutId);
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success && data.data && data.data.success) {
+                        showConnectionSuccess(data.data);
                     } else {
-                        response.text().then(text => {
-                            showToast('Error: ' + text, 'error');
-                        });
+                        showConnectionFailure(data.data || { errorMessage: data.error || 'Unknown error' });
                     }
                 }).catch(err => {
-                    showToast('Network error: Unable to connect to server', 'error');
+                    clearTimeout(timeoutId);
+                    // Network error or timeout - need to determine outcome
+                    // Poll to check if server is still reachable (fallback) or not (success)
+                    checkConnectionOutcome(ssid);
                 });
             });
         }

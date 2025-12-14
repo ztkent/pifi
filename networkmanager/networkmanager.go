@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os/exec"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/text/cases"
@@ -43,6 +44,25 @@ type ConnectionInfo struct {
 	Password string
 }
 
+// ConnectionResult represents the outcome of a connection attempt with fallback
+type ConnectionResult struct {
+	Success      bool   `json:"success"`
+	NewSSID      string `json:"newSSID,omitempty"`
+	NewIP        string `json:"newIP,omitempty"`
+	FallbackSSID string `json:"fallbackSSID,omitempty"`
+	ErrorType    string `json:"errorType,omitempty"`
+	ErrorMessage string `json:"errorMessage,omitempty"`
+	FallbackUsed bool   `json:"fallbackUsed"`
+}
+
+// Connection error types for user-friendly messages
+const (
+	ErrTypeWrongPassword   = "wrong_password"
+	ErrTypeNetworkNotFound = "network_not_found"
+	ErrTypeTimeout         = "timeout"
+	ErrTypeUnknown         = "unknown"
+)
+
 type NetworkManager interface {
 	SetupAPConnection() error
 	ManageOfflineAP(connectionLossTimeout time.Duration) error
@@ -58,10 +78,15 @@ type NetworkManager interface {
 	RemoveNetworkConnection(ssid string) error
 	SetAutoConnectConnection(ssid string, autoConnect bool) error
 	ConnectNetwork(ssid string) error
+
+	// Graceful connection with fallback
+	AttemptConnectionWithFallback(targetSSID string) *ConnectionResult
 }
 
 type networkManager struct {
-	status NetworkStatus
+	status         NetworkStatus
+	connectionMu   sync.Mutex // Protects connection operations
+	userConnecting bool       // Signals user-initiated connection in progress
 }
 
 func New() NetworkManager {
@@ -363,10 +388,24 @@ func (nm *networkManager) ConnectNetwork(ssid string) error {
 // Enable the AP if there's no internet connection for a certain amount of time. This will run in the background.
 func (nm *networkManager) ManageOfflineAP(connectionLossTimeout time.Duration) error {
 	for {
+		// Skip if user is currently attempting a connection
+		if nm.userConnecting {
+			log.Println("AP watchdog: User connection in progress, skipping check")
+			time.Sleep(5 * time.Second)
+			continue
+		}
+
 		apMode := getWifiMode(nm.status.APSSID)
 		if !nm.checkWlanConnection() && apMode != "ap" {
 			log.Println("Device offline, waiting for recovery...")
 			time.Sleep(connectionLossTimeout)
+
+			// Check again if user started connecting during the wait
+			if nm.userConnecting {
+				log.Println("AP watchdog: User connection started during wait, skipping AP activation")
+				continue
+			}
+
 			if !nm.checkWlanConnection() {
 				log.Println("No connection after timeout, enabling AP mode")
 				if err := nm.ConnectNetwork(nm.status.APSSID); err != nil {
