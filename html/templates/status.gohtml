@@ -1,203 +1,66 @@
-<style>
-    .status-card {
-        border: 1px solid #e1e1e1;
-        border-radius: 12px;
-        padding: 25px;
-        max-width: 450px;
-        width: 100%;
-        margin: 0 auto;
-        background-color: white;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-    }
-    
-    /* Mobile responsive adjustments */
-    @media (max-width: 768px) {
-        .status-card {
-            padding: 20px;
-            margin: 0 10px;
-            border-radius: 8px;
-        }
-    }
-    
-    @media (max-width: 480px) {
-        .status-card {
-            padding: 15px;
-            margin: 0 5px;
-            border-radius: 6px;
-        }
-    }
-    .status-item {
-        margin: 15px 0;
-        padding: 10px;
-        border-bottom: 1px solid #f1f1f1;
-    }
-    .status-item:last-child {
-        border-bottom: none;
-    }
-    .status-label {
-        font-weight: 600;
-        color: #2d3436;
-        display: inline-block;
-        width: 140px;
-        vertical-align: top;
-    }
-    
-    /* Mobile responsive status labels */
-    @media (max-width: 480px) {
-        .status-item {
-            margin: 12px 0;
-            padding: 8px;
-        }
-        .status-label {
-            display: block;
-            width: 100%;
-            margin-bottom: 5px;
-            font-size: 14px;
-        }
-        .status-value {
-            display: block;
-            padding-left: 0;
-        }
-        h1 {
-            font-size: 1.4em;
-            margin-bottom: 20px;
-        }
-    }
-    .connected {
-        color: #27ae60;
-        font-weight: 600;
-    }
-    .disconnected {
-        color: #e74c3c;
-        font-weight: 600;
-    }
-    .site-only {
-        color: #ffa500; 
-        font-weight: 600;
-    }
-    .limited {
-        color: #ffa500;
-        font-weight: 600;
-    }
-    .enabled {
-        color: #27ae60;
-        font-weight: 600;
-    }
-    .disabled {
-        color: #95a5a6;
-        font-weight: 600;
-    }
-    h1 {
-        color: #2c3e50;
-        margin-bottom: 25px;
-        text-align: center;
-    }
-    .timestamp {
-        color: #7f8c8d;
-        font-size: 0.9em;
-    }
-    .version {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        color: #95a5a6;
-        font-size: 0.8em;
-    }
-    .signal-strength {
-        font-weight: 600;
-    }
-    .signal-excellent {
-        color: #27ae60;
-    }
-    .signal-good {
-        color: #2ecc71;
-    }
-    .signal-fair {
-        color: #f1c40f;
-    }
-    .signal-poor {
-        color: #e67e22;
-    }
-    .signal-none {
-        color: #e74c3c;
-    }
-    .mode-select {
-        padding: 8px;
-        border-radius: 6px;
-        border: 1px solid #e1e1e1;
-        background-color: white;
-        color: #2d3436;
-        font-size: 14px;
-        width: 135px;
-    }
-    
-    .mode-select:focus {
-        outline: none;
-        border-color: #3498db;
-        box-shadow: 0 0 0 2px rgba(52,152,219,0.2);
-    }
-    
-    .mode-select option {
-        padding: 8px;
-    }
-</style>
-</head>
-<div class="status-card">
-    <span class="version">v{{.Version}}</span>
-    <h1>Status</h1>
-    <div class="status-item">
-        <span class="status-label">Network State:</span>
-        <span class="{{if eq .NetworkInfo.State "Connected"}}connected{{else if eq .NetworkInfo.State "Connected (Site Only)"}}site-only{{else}}disconnected{{end}}">
-            {{.NetworkInfo.State}}
-        </span>
-    </div>
+<div class="card-grid">
+    <article class="card">
+        <h2 class="card-header">Connection Status</h2>
+        <div class="status-list">
+            <div class="status-item">
+                <span class="status-label">Network State:</span>
+                <span class="status-value {{if or (eq .NetworkInfo.State "connected") (eq .NetworkInfo.State "Connected")}}status-connected{{else if or (eq .NetworkInfo.State "disconnected") (eq .NetworkInfo.State "Disconnected")}}status-disconnected{{else}}status-limited{{end}}">
+                    {{.NetworkInfo.State}}
+                </span>
+            </div>
+            
+            <div class="status-item">
+                <span class="status-label">Connectivity:</span>
+                <span class="status-value {{if or (eq .NetworkInfo.Connectivity "full") (eq .NetworkInfo.Connectivity "Full")}}status-connected{{else if or (eq .NetworkInfo.Connectivity "limited") (eq .NetworkInfo.Connectivity "Limited")}}status-limited{{else}}status-disconnected{{end}}">
+                    {{.NetworkInfo.Connectivity}}
+                </span>
+            </div>
+            
+            <div class="status-item">
+                <span class="status-label">WiFi:</span>
+                <span class="status-value {{if or (eq .NetworkInfo.Wifi "enabled") (eq .NetworkInfo.Wifi "Enabled")}}status-enabled{{else}}status-disabled{{end}}">
+                    {{.NetworkInfo.Wifi}}
+                </span>
+            </div>
+        </div>
+    </article>
 
-    <div class="status-item">
-        <span class="status-label">Connectivity:</span>
-        <span class="{{if eq .NetworkInfo.Connectivity "Full"}}connected{{else if eq .NetworkInfo.Connectivity "Limited"}}limited{{else}}disconnected{{end}}">
-            {{.NetworkInfo.Connectivity}}
-        </span>
-    </div>
-
-    <div class="status-item">
-        <span class="status-label">WiFi:</span>
-        <span class="{{if eq .NetworkInfo.Wifi "Enabled"}}enabled{{else}}disabled{{end}}">
-            {{.NetworkInfo.Wifi}}
-        </span>
-    </div>
-
-    <div class="status-item">
-        <span class="status-label">Device IP:</span>
-        <span class="signal-strength {{if eq .NetworkInfo.IPs.WifiState "online"}}connected{{else}}disconnected{{end}}">
-            {{.NetworkInfo.IPs.WifiIP}}
-            {{if and (eq .NetworkInfo.IPs.WifiState "online") (.NetworkInfo.WifiSSID)}}
-                ({{.NetworkInfo.WifiSSID}})
+    <article class="card">
+        <h2 class="card-header">Device Information</h2>
+        <div class="status-list">
+            {{if .NetworkInfo.IPs.WifiIP}}
+            <div class="status-item">
+                <span class="status-label">Device IP:</span>
+                <span class="status-value">{{.NetworkInfo.IPs.WifiIP}}{{if .NetworkInfo.WifiSSID}} ({{.NetworkInfo.WifiSSID}}){{end}}</span>
+            </div>
             {{end}}
-        </span>
-    </div>
+            
+            {{if .NetworkInfo.WifiSSID}}
+            <div class="status-item">
+                <span class="status-label">Connected To:</span>
+                <span class="status-value">{{.NetworkInfo.WifiSSID}}</span>
+            </div>
+            {{end}}
+            
+            {{if .NetworkInfo.IPs.EthernetIP}}
+            <div class="status-item">
+                <span class="status-label">Ethernet IP:</span>
+                <span class="status-value">{{.NetworkInfo.IPs.EthernetIP}}</span>
+            </div>
+            {{end}}
+        </div>
+    </article>
 
-    <div class="status-item">
-        <span class="status-label">Ethernet IP:</span>
-        <span class="signal-strength {{if eq .NetworkInfo.IPs.EthState "online"}}connected{{else}}disconnected{{end}}">
-            {{.NetworkInfo.IPs.EthernetIP}}
-        </span>
-    </div>
-
-    <div class="status-item">
-        <span class="status-label">Network Mode:</span>
-        <select class="mode-select"
-                name="mode"
-                hx-post="/setmode"
-                hx-trigger="change"
-                hx-swap="none"
-                hx-indicator=".mode-select">
-            <option value="client" {{if eq .NetworkInfo.Mode "client"}}selected{{end}}>Client</option>
-            <option value="ap" {{if eq .NetworkInfo.Mode "ap"}}selected{{end}}>Access Point</option>
-        </select>
-    </div>
-
-    <div class="status-item">
-        <span class="status-label">Last Updated:</span>
-        <span class="timestamp">{{.Timestamp.Format "2006-01-02 15:04:05"}}</span>
-    </div>
+    <article class="card">
+        <h2 class="card-header">Network Mode</h2>
+        <form hx-post="/setmode" hx-swap="none" class="form-group">
+            <label class="form-label" for="mode">Select Mode:</label>
+            <select name="mode" id="mode" class="form-select">
+                <option value="client" {{if eq .NetworkInfo.Mode "client"}}selected{{end}}>Client Mode</option>
+                <option value="ap" {{if eq .NetworkInfo.Mode "ap"}}selected{{end}}>Access Point Mode</option>
+            </select>
+            <button type="submit" class="btn btn-primary btn-block mt-2">Update Mode</button>
+        </form>
+        <p class="text-muted mt-2">Last updated: {{.Timestamp.Format "2006-01-02 15:04:05"}}</p>
+    </article>
 </div>

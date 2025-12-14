@@ -27,6 +27,9 @@ func main() {
 
 	r := mux.NewRouter()
 
+	// Serve static files
+	r.PathPrefix("/static/").Handler(handlers.StaticFileHandler())
+
 	// UI routes
 	r.HandleFunc("/", handlers.PiFiHandler(nm)).Methods("GET")
 	r.HandleFunc("/status", handlers.StatusHandler(nm)).Methods("GET")

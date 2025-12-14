@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"html/template"
+	"io/fs"
 	"net/http"
 	"time"
 
@@ -20,6 +21,7 @@ type StatusResponse struct {
 type NetworkResponse struct {
 	AvailableNetworks  []string                        `json:"availableNetworks"`
 	ConfiguredNetworks []networkmanager.ConnectionInfo `json:"configuredNetworks"`
+	CurrentSSID        string                          `json:"currentSSID"`
 	Timestamp          time.Time                       `json:"timestamp"`
 }
 
@@ -34,9 +36,17 @@ func SetMode(nm networkmanager.NetworkManager) http.HandlerFunc {
 	}
 }
 
+func StaticFileHandler() http.Handler {
+	staticFS, err := fs.Sub(html.Embedded, "static")
+	if err != nil {
+		panic(err)
+	}
+	return http.StripPrefix("/static/", http.FileServer(http.FS(staticFS)))
+}
+
 func PiFiHandler(nm networkmanager.NetworkManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		tmpl, err := template.ParseFS(html.Templates, "templates/index.gohtml")
+		tmpl, err := template.ParseFS(html.Embedded, "templates/index.gohtml")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -62,7 +72,7 @@ func StatusHandler(nm networkmanager.NetworkManager) http.HandlerFunc {
 		}
 		status.NetworkInfo = netStatus
 
-		tmpl, err := template.ParseFS(html.Templates, "templates/status.gohtml")
+		tmpl, err := template.ParseFS(html.Embedded, "templates/status.gohtml")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -88,7 +98,13 @@ func NetworksHandler(nm networkmanager.NetworkManager) http.HandlerFunc {
 			return
 		}
 
-		tmpl, err := template.ParseFS(html.Templates, "templates/network.gohtml")
+		netStatus, err := nm.GetNetworkStatus()
+		var currentSSID string
+		if err == nil {
+			currentSSID = netStatus.WifiSSID
+		}
+
+		tmpl, err := template.ParseFS(html.Embedded, "templates/network.gohtml")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -96,6 +112,7 @@ func NetworksHandler(nm networkmanager.NetworkManager) http.HandlerFunc {
 		NetworkResponse := NetworkResponse{
 			AvailableNetworks:  availableNetworks,
 			ConfiguredNetworks: configuredNetworks,
+			CurrentSSID:        currentSSID,
 			Timestamp:          time.Now(),
 		}
 		err = tmpl.Execute(w, NetworkResponse)
