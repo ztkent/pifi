@@ -285,7 +285,7 @@ func SetAutoConnectConnectionAPI(nm networkmanager.NetworkManager) http.HandlerF
 	}
 }
 
-// ConnectNetworkAPI connects to a network via JSON
+// ConnectNetworkAPI connects to a network via JSON with graceful fallback
 func ConnectNetworkAPI(nm networkmanager.NetworkManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -314,21 +314,18 @@ func ConnectNetworkAPI(nm networkmanager.NetworkManager) http.HandlerFunc {
 			return
 		}
 
-		err := nm.ConnectNetwork(request.SSID)
-		if err != nil {
-			response := APIResponse{
-				Success: false,
-				Error:   err.Error(),
-			}
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(response)
-			return
-		}
+		// Use graceful connection with fallback
+		result := nm.AttemptConnectionWithFallback(request.SSID)
 
 		response := APIResponse{
-			Success: true,
-			Data:    map[string]string{"ssid": request.SSID, "status": "connected"},
+			Success: result.Success,
+			Data:    result,
 		}
+
+		if !result.Success {
+			response.Error = result.ErrorMessage
+		}
+
 		json.NewEncoder(w).Encode(response)
 	}
 }

@@ -1,15 +1,12 @@
 package networkmanager
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"log"
 	"math/rand"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/text/cases"
@@ -17,9 +14,8 @@ import (
 )
 
 const (
-	ModeClient   = "client"
-	ModeAP       = "ap"
-	passwordFile = "/etc/default/pifi_env_password"
+	ModeClient = "client"
+	ModeAP     = "ap"
 )
 
 type NetworkStatus struct {
@@ -44,9 +40,29 @@ type NetworkIPs struct {
 }
 
 type ConnectionInfo struct {
-	SSID     string
-	Password string
+	SSID        string
+	Password    string
+	AutoConnect bool
 }
+
+// ConnectionResult represents the outcome of a connection attempt with fallback
+type ConnectionResult struct {
+	Success      bool   `json:"success"`
+	NewSSID      string `json:"newSSID,omitempty"`
+	NewIP        string `json:"newIP,omitempty"`
+	FallbackSSID string `json:"fallbackSSID,omitempty"`
+	ErrorType    string `json:"errorType,omitempty"`
+	ErrorMessage string `json:"errorMessage,omitempty"`
+	FallbackUsed bool   `json:"fallbackUsed"`
+}
+
+// Connection error types for user-friendly messages
+const (
+	ErrTypeWrongPassword   = "wrong_password"
+	ErrTypeNetworkNotFound = "network_not_found"
+	ErrTypeTimeout         = "timeout"
+	ErrTypeUnknown         = "unknown"
+)
 
 type NetworkManager interface {
 	SetupAPConnection() error
@@ -63,19 +79,16 @@ type NetworkManager interface {
 	RemoveNetworkConnection(ssid string) error
 	SetAutoConnectConnection(ssid string, autoConnect bool) error
 	ConnectNetwork(ssid string) error
+	HasAutoConnectConnection() bool
 
-	// Environment Management
-	GetEnvironmentVariables() (map[string]string, error)
-	SetEnvironmentVariable(key, value string) error
-	UnsetEnvironmentVariable(key string) error
-	SetEnvPassword(password string) error
-	RemoveEnvPassword() error
-	ValidateEnvPassword(password string) (bool, error)
-	IsEnvPasswordSet() bool
+	// Graceful connection with fallback
+	AttemptConnectionWithFallback(targetSSID string) *ConnectionResult
 }
 
 type networkManager struct {
-	status NetworkStatus
+	status         NetworkStatus
+	connectionMu   sync.Mutex // Protects connection operations
+	userConnecting bool       // Signals user-initiated connection in progress
 }
 
 func New() NetworkManager {
@@ -173,6 +186,11 @@ func (nm *networkManager) SetWifiMode(mode string) error {
 			}
 		}
 	case ModeClient:
+		// Prevent switching to client mode without an auto-connect connection that's in range
+		if !nm.HasAutoConnectConnection() {
+			return fmt.Errorf("cannot switch to client mode: no auto-connect networks are in range. Enable auto-connect on at least one network that is currently available")
+		}
+
 		if hasAP {
 			cmd = exec.Command("nmcli", "con", "down", nm.status.APSSID)
 			if err := cmd.Run(); err != nil {
@@ -278,12 +296,24 @@ func (nm *networkManager) GetConfiguredConnections() ([]ConnectionInfo, error) {
 		fields := strings.Split(line, ":")
 		if len(fields) >= 2 && fields[1] == "802-11-wireless" {
 			connName := fields[0]
+			// Skip AP connections
+			if strings.HasPrefix(connName, "PiFi-AP-") {
+				continue
+			}
+
 			pskCmd := exec.Command("nmcli", "-t", "-f", "802-11-wireless-security.psk", "connection", "show", connName)
 			pskOutput, _ := pskCmd.Output()
 			password := strings.TrimSpace(string(pskOutput))
+
+			// Get auto-connect setting
+			autoConnectCmd := exec.Command("nmcli", "-t", "-f", "connection.autoconnect", "connection", "show", connName)
+			autoConnectOutput, _ := autoConnectCmd.Output()
+			autoConnect := strings.TrimSpace(string(autoConnectOutput)) == "connection.autoconnect:yes"
+
 			connections = append(connections, ConnectionInfo{
-				SSID:     connName,
-				Password: password,
+				SSID:        connName,
+				Password:    password,
+				AutoConnect: autoConnect,
 			})
 		}
 	}
@@ -338,6 +368,12 @@ func (nm *networkManager) ModifyNetworkConnection(ssid, password string, autoCon
 
 // Remove a saved connection by name
 func (nm *networkManager) RemoveNetworkConnection(ssid string) error {
+	// Prevent removing the currently active connection
+	currentSSID := nm.getCurrentActiveSSID()
+	if currentSSID == ssid {
+		return fmt.Errorf("cannot remove the currently active connection '%s'", ssid)
+	}
+
 	cmd := exec.Command("nmcli", "connection", "delete", ssid)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to delete connection: %v", err)
@@ -364,6 +400,40 @@ func (nm *networkManager) SetAutoConnectConnection(ssid string, autoConnect bool
 	return nil
 }
 
+// HasAutoConnectConnection returns true if any non-AP wifi connection has auto-connect enabled AND is in range
+func (nm *networkManager) HasAutoConnectConnection() bool {
+	connections, err := nm.GetConfiguredConnections()
+	if err != nil {
+		return false
+	}
+
+	// Get available networks to check if auto-connect networks are in range
+	availableNetworks, err := nm.FindAvailableNetworks()
+	if err != nil {
+		// If we can't scan, be conservative and check only auto-connect setting
+		for _, conn := range connections {
+			if conn.AutoConnect {
+				return true
+			}
+		}
+		return false
+	}
+
+	// Build a set of available SSIDs for quick lookup
+	availableSet := make(map[string]bool)
+	for _, ssid := range availableNetworks {
+		availableSet[ssid] = true
+	}
+
+	// Check if any auto-connect network is in range
+	for _, conn := range connections {
+		if conn.AutoConnect && availableSet[conn.SSID] {
+			return true
+		}
+	}
+	return false
+}
+
 // Connect to a saved network by name
 func (nm *networkManager) ConnectNetwork(ssid string) error {
 	cmd := exec.Command("nmcli", "connection", "up", ssid)
@@ -374,59 +444,27 @@ func (nm *networkManager) ConnectNetwork(ssid string) error {
 	return nil
 }
 
-// Get environment variables - now returns only managed variables
-func (nm *networkManager) GetEnvironmentVariables() (map[string]string, error) {
-	return getManagedEnvironmentVariables()
-}
-
-// Set environment variable and add to managed list
-func (nm *networkManager) SetEnvironmentVariable(key, value string) error {
-	if key == "" {
-		return fmt.Errorf("environment variable key cannot be empty")
-	}
-
-	// Set the environment variable
-	if err := setSystemEnv(key, value); err != nil {
-		return fmt.Errorf("failed to set environment variable: %v", err)
-	}
-
-	// Add to managed list
-	if err := addToManagedList(key); err != nil {
-		log.Printf("Warning: failed to add %s to managed list: %v", key, err)
-		// Don't fail the whole operation, just log the warning
-	}
-
-	log.Printf("Environment variable %s set and added to managed list", key)
-	return nil
-}
-
-// Unset environment variable and remove from managed list
-func (nm *networkManager) UnsetEnvironmentVariable(key string) error {
-	if key == "" {
-		return fmt.Errorf("environment variable key cannot be empty")
-	}
-
-	// Remove the environment variable
-	if err := removeSystemEnv(key); err != nil {
-		log.Printf("Warning: failed to remove environment variable %s: %v", key, err)
-	}
-
-	// Remove from managed list
-	if err := removeFromManagedList(key); err != nil {
-		log.Printf("Warning: failed to remove %s from managed list: %v", key, err)
-	}
-
-	log.Printf("Environment variable %s removed and deleted from managed list", key)
-	return nil
-}
-
 // Enable the AP if there's no internet connection for a certain amount of time. This will run in the background.
 func (nm *networkManager) ManageOfflineAP(connectionLossTimeout time.Duration) error {
 	for {
+		// Skip if user is currently attempting a connection
+		if nm.userConnecting {
+			log.Println("AP watchdog: User connection in progress, skipping check")
+			time.Sleep(5 * time.Second)
+			continue
+		}
+
 		apMode := getWifiMode(nm.status.APSSID)
 		if !nm.checkWlanConnection() && apMode != "ap" {
 			log.Println("Device offline, waiting for recovery...")
 			time.Sleep(connectionLossTimeout)
+
+			// Check again if user started connecting during the wait
+			if nm.userConnecting {
+				log.Println("AP watchdog: User connection started during wait, skipping AP activation")
+				continue
+			}
+
 			if !nm.checkWlanConnection() {
 				log.Println("No connection after timeout, enabling AP mode")
 				if err := nm.ConnectNetwork(nm.status.APSSID); err != nil {
@@ -438,113 +476,4 @@ func (nm *networkManager) ManageOfflineAP(connectionLossTimeout time.Duration) e
 		}
 		time.Sleep(60 * time.Second)
 	}
-}
-
-func (nm *networkManager) SetEnvPassword(password string) error {
-	if password == "" {
-		return fmt.Errorf("password cannot be empty")
-	}
-
-	// Hash the password
-	hash := sha256.Sum256([]byte(password))
-	hashedPassword := hex.EncodeToString(hash[:])
-
-	// Try to write to system location first, fallback to user directory
-	if err := writePasswordFile(passwordFile, hashedPassword); err != nil {
-		homeDir, homeErr := os.UserHomeDir()
-		if homeErr != nil {
-			return fmt.Errorf("failed to set password: no write access to system files and cannot determine home directory")
-		}
-
-		userPasswordFile := filepath.Join(homeDir, ".pifi_env_password")
-		if err := writePasswordFile(userPasswordFile, hashedPassword); err != nil {
-			return fmt.Errorf("failed to set password: %v", err)
-		}
-	}
-
-	return nil
-}
-
-// RemoveEnvPassword removes the password protection
-func (nm *networkManager) RemoveEnvPassword() error {
-	// Try to remove from both system and user locations
-	systemRemoved := os.Remove(passwordFile) == nil
-
-	homeDir, err := os.UserHomeDir()
-	userRemoved := false
-	if err == nil {
-		userPasswordFile := filepath.Join(homeDir, ".pifi_env_password")
-		userRemoved = os.Remove(userPasswordFile) == nil
-	}
-
-	if !systemRemoved && !userRemoved {
-		return fmt.Errorf("no password file found to remove")
-	}
-
-	return nil
-}
-
-// ValidateEnvPassword validates the provided password against the stored hash
-func (nm *networkManager) ValidateEnvPassword(password string) (bool, error) {
-	// Try system location first
-	if hash, err := readPasswordFile(passwordFile); err == nil {
-		return validatePassword(password, hash), nil
-	}
-
-	// Try user location
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return false, fmt.Errorf("cannot determine home directory")
-	}
-
-	userPasswordFile := filepath.Join(homeDir, ".pifi_env_password")
-	if hash, err := readPasswordFile(userPasswordFile); err == nil {
-		return validatePassword(password, hash), nil
-	}
-
-	return false, fmt.Errorf("no password file found")
-}
-
-// IsEnvPasswordSet checks if a password is currently set
-func (nm *networkManager) IsEnvPasswordSet() bool {
-	// Check system location
-	if _, err := readPasswordFile(passwordFile); err == nil {
-		return true
-	}
-
-	// Check user location
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return false
-	}
-
-	userPasswordFile := filepath.Join(homeDir, ".pifi_env_password")
-	_, err = readPasswordFile(userPasswordFile)
-	return err == nil
-}
-
-// Helper functions
-func writePasswordFile(filename, hashedPassword string) error {
-	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	_, err = file.WriteString(hashedPassword)
-	return err
-}
-
-func readPasswordFile(filename string) (string, error) {
-	data, err := os.ReadFile(filename)
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(string(data)), nil
-}
-
-func validatePassword(password, storedHash string) bool {
-	hash := sha256.Sum256([]byte(password))
-	providedHash := hex.EncodeToString(hash[:])
-	return providedHash == storedHash
 }
