@@ -19,11 +19,11 @@ A web service that allows you to configure the WiFi settings of your Raspberry P
 - Connect to the same network as your device running PiFi
 - Navigate directly to `http://<device-ip>:8088`
 
-#### Client Mode
-<img width="1000" height="500" alt="Client" src="https://github.com/user-attachments/assets/2de5ba45-c0e4-4135-a0d0-f6c58088268d" />
+#### Client Mode - 
+<img width="720" height="400" alt="image" src="https://github.com/user-attachments/assets/22e96da0-0bc0-4e3b-af40-03d10bb4952c" />
 
-#### Access Point Mode
-<img width="1000" height="500" alt="image" src="https://github.com/user-attachments/assets/67f22add-f276-490b-bd59-f903a335c596" />
+#### AP Mode -
+<img width="720" height="450" alt="image" src="https://github.com/user-attachments/assets/a9a2f274-4374-48c5-a909-ce4bf63e15d6" />
 
 
 ## API
