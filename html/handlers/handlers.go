@@ -12,10 +12,12 @@ import (
 )
 
 type StatusResponse struct {
-	Status      string    `json:"status"`
-	Timestamp   time.Time `json:"timestamp"`
-	Version     string    `json:"version"`
-	NetworkInfo networkmanager.NetworkStatus
+	Status             string                          `json:"status"`
+	Timestamp          time.Time                       `json:"timestamp"`
+	Version            string                          `json:"version"`
+	NetworkInfo        networkmanager.NetworkStatus
+	ConfiguredNetworks []networkmanager.ConnectionInfo `json:"configuredNetworks"`
+	AvailableNetworks  []string                        `json:"availableNetworks"`
 }
 
 type NetworkResponse struct {
@@ -72,6 +74,14 @@ func StatusHandler(nm networkmanager.NetworkManager) http.HandlerFunc {
 		}
 		status.NetworkInfo = netStatus
 
+		// Get configured networks for mode switcher UI
+		configuredNetworks, _ := nm.GetConfiguredConnections()
+		status.ConfiguredNetworks = configuredNetworks
+
+		// Get available networks to show which ones are in range
+		availableNetworks, _ := nm.FindAvailableNetworks()
+		status.AvailableNetworks = availableNetworks
+
 		tmpl, err := template.ParseFS(html.Embedded, "templates/status.gohtml")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -126,7 +136,17 @@ func NetworksHandler(nm networkmanager.NetworkManager) http.HandlerFunc {
 func ModifyNetworkHandler(nm networkmanager.NetworkManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
-		err := nm.ModifyNetworkConnection(r.Form.Get("ssid"), r.Form.Get("password"), false)
+		ssid := r.Form.Get("ssid")
+		// Check for custom SSID input when dropdown selection is "__custom__"
+		if ssid == "" || ssid == "__custom__" {
+			ssid = r.Form.Get("ssid_custom")
+		}
+		if ssid == "" {
+			http.Error(w, "Network name is required", http.StatusBadRequest)
+			return
+		}
+		autoConnect := r.Form.Get("autoconnect") == "true"
+		err := nm.ModifyNetworkConnection(ssid, r.Form.Get("password"), autoConnect)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -148,7 +168,8 @@ func RemoveNetworkConnectionHandler(nm networkmanager.NetworkManager) http.Handl
 func AutoConnectNetworkHandler(nm networkmanager.NetworkManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
-		err := nm.SetAutoConnectConnection(r.Form.Get("network"), true)
+		autoConnect := r.Form.Get("autoconnect") == "true"
+		err := nm.SetAutoConnectConnection(r.Form.Get("network"), autoConnect)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

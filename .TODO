@@ -1,5 +1,0 @@
-- Prevent users from removing the current active connection config.
-- Support 'auto-connect' option in the connection configuration.
-- If no 'auto-connect' option is available, prevent switching from AP to Client (or else it wont attempt anything, and eventually fallback)
- - Allow direct connect attempts tho
-- Add connection management style UI to the ap/client mode switcher too.

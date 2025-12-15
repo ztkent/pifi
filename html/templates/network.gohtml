@@ -7,6 +7,7 @@
         <div class="network-list" id="configured-networks">
             {{range .ConfiguredNetworks}}
             {{$ssid := .SSID}}
+            {{$autoConnect := .AutoConnect}}
             <div class="network-item">
                 <div class="network-item-header">
                     <span class="network-name">{{.SSID}}</span>
@@ -16,30 +17,53 @@
                         <span class="network-badge badge-active">Active</span>
                         {{else}}
                         <span class="network-badge badge-configured">Configured</span>
-                        {{end}}
                         {{range $.AvailableNetworks}}
                         {{if eq . $ssid}}
                         <span class="network-badge badge-available">Available</span>
                         {{end}}
                         {{end}}
+                        {{end}}
+                        {{if $autoConnect}}
+                        <span class="network-badge badge-autoconnect">Auto</span>
+                        {{end}}
                     </div>
                 </div>
                 <div class="network-actions">
-                    {{if ne $.CurrentSSID .SSID}}
-                    <button 
-                        class="btn btn-primary btn-sm"
-                        onclick="confirmNetworkConnect('{{.SSID}}')">
-                        Connect
-                    </button>
-                    {{end}}
-                    <button 
-                        class="btn btn-danger btn-sm"
-                        hx-post="/remove-network"
-                        hx-vals='{"network": "{{.SSID}}"}'
-                        hx-swap="none"
-                        hx-confirm="Are you sure you want to remove this network?">
-                        Remove
-                    </button>
+                    <div class="network-actions-left">
+                        {{if ne $.CurrentSSID .SSID}}
+                        <button 
+                            class="btn btn-primary btn-sm"
+                            onclick="confirmNetworkConnect('{{.SSID}}')">
+                            Connect
+                        </button>
+                        <button 
+                            class="btn btn-danger btn-sm"
+                            hx-post="/remove-network"
+                            hx-vals='{"network": "{{.SSID}}"}'
+                            hx-swap="none"
+                            hx-confirm="Are you sure you want to remove this network?">
+                            Remove
+                        </button>
+                        {{else}}
+                        <button 
+                            class="btn btn-danger btn-sm"
+                            disabled
+                            title="Cannot remove the active connection">
+                            Remove
+                        </button>
+                        {{end}}
+                    </div>
+                    <div class="toggle-with-label">
+                        <span class="toggle-label">Auto</span>
+                        <label class="toggle-switch" title="Auto-connect">
+                            <input type="checkbox" 
+                                {{if $autoConnect}}checked{{end}}
+                                hx-post="/autoconnect-network"
+                                hx-vals='{"network": "{{.SSID}}", "autoconnect": "{{if $autoConnect}}false{{else}}true{{end}}"}'
+                                hx-swap="none">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
                 </div>
             </div>
             {{end}}
@@ -87,6 +111,13 @@
                     class="form-input" 
                     placeholder="Enter password">
                 <p class="text-muted mt-1">Leave blank for open networks</p>
+            </div>
+
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="autoconnect" value="true" checked>
+                    <span>Auto-connect when in range</span>
+                </label>
             </div>
             
             <button type="submit" class="btn btn-primary btn-block">Add Network</button>

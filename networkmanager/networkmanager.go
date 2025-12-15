@@ -40,8 +40,9 @@ type NetworkIPs struct {
 }
 
 type ConnectionInfo struct {
-	SSID     string
-	Password string
+	SSID        string
+	Password    string
+	AutoConnect bool
 }
 
 // ConnectionResult represents the outcome of a connection attempt with fallback
@@ -78,6 +79,7 @@ type NetworkManager interface {
 	RemoveNetworkConnection(ssid string) error
 	SetAutoConnectConnection(ssid string, autoConnect bool) error
 	ConnectNetwork(ssid string) error
+	HasAutoConnectConnection() bool
 
 	// Graceful connection with fallback
 	AttemptConnectionWithFallback(targetSSID string) *ConnectionResult
@@ -184,6 +186,11 @@ func (nm *networkManager) SetWifiMode(mode string) error {
 			}
 		}
 	case ModeClient:
+		// Prevent switching to client mode without an auto-connect connection that's in range
+		if !nm.HasAutoConnectConnection() {
+			return fmt.Errorf("cannot switch to client mode: no auto-connect networks are in range. Enable auto-connect on at least one network that is currently available")
+		}
+
 		if hasAP {
 			cmd = exec.Command("nmcli", "con", "down", nm.status.APSSID)
 			if err := cmd.Run(); err != nil {
@@ -289,12 +296,24 @@ func (nm *networkManager) GetConfiguredConnections() ([]ConnectionInfo, error) {
 		fields := strings.Split(line, ":")
 		if len(fields) >= 2 && fields[1] == "802-11-wireless" {
 			connName := fields[0]
+			// Skip AP connections
+			if strings.HasPrefix(connName, "PiFi-AP-") {
+				continue
+			}
+
 			pskCmd := exec.Command("nmcli", "-t", "-f", "802-11-wireless-security.psk", "connection", "show", connName)
 			pskOutput, _ := pskCmd.Output()
 			password := strings.TrimSpace(string(pskOutput))
+
+			// Get auto-connect setting
+			autoConnectCmd := exec.Command("nmcli", "-t", "-f", "connection.autoconnect", "connection", "show", connName)
+			autoConnectOutput, _ := autoConnectCmd.Output()
+			autoConnect := strings.TrimSpace(string(autoConnectOutput)) == "connection.autoconnect:yes"
+
 			connections = append(connections, ConnectionInfo{
-				SSID:     connName,
-				Password: password,
+				SSID:        connName,
+				Password:    password,
+				AutoConnect: autoConnect,
 			})
 		}
 	}
@@ -349,6 +368,12 @@ func (nm *networkManager) ModifyNetworkConnection(ssid, password string, autoCon
 
 // Remove a saved connection by name
 func (nm *networkManager) RemoveNetworkConnection(ssid string) error {
+	// Prevent removing the currently active connection
+	currentSSID := nm.getCurrentActiveSSID()
+	if currentSSID == ssid {
+		return fmt.Errorf("cannot remove the currently active connection '%s'", ssid)
+	}
+
 	cmd := exec.Command("nmcli", "connection", "delete", ssid)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to delete connection: %v", err)
@@ -373,6 +398,40 @@ func (nm *networkManager) SetAutoConnectConnection(ssid string, autoConnect bool
 	}
 
 	return nil
+}
+
+// HasAutoConnectConnection returns true if any non-AP wifi connection has auto-connect enabled AND is in range
+func (nm *networkManager) HasAutoConnectConnection() bool {
+	connections, err := nm.GetConfiguredConnections()
+	if err != nil {
+		return false
+	}
+
+	// Get available networks to check if auto-connect networks are in range
+	availableNetworks, err := nm.FindAvailableNetworks()
+	if err != nil {
+		// If we can't scan, be conservative and check only auto-connect setting
+		for _, conn := range connections {
+			if conn.AutoConnect {
+				return true
+			}
+		}
+		return false
+	}
+
+	// Build a set of available SSIDs for quick lookup
+	availableSet := make(map[string]bool)
+	for _, ssid := range availableNetworks {
+		availableSet[ssid] = true
+	}
+
+	// Check if any auto-connect network is in range
+	for _, conn := range connections {
+		if conn.AutoConnect && availableSet[conn.SSID] {
+			return true
+		}
+	}
+	return false
 }
 
 // Connect to a saved network by name

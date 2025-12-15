@@ -61,6 +61,18 @@
             </select>
             <button type="button" id="update-mode-btn" class="btn btn-primary btn-block mt-2" onclick="confirmModeChange()" disabled>Update Mode</button>
         </form>
+        
+        {{if eq .NetworkInfo.Mode "ap"}}
+        {{if .ConfiguredNetworks}}
+        <div class="mode-networks mt-3">
+            <p class="form-label">Available Networks for Client Mode:</p>
+            <p class="text-muted text-sm mb-2">At least one in-range network must have auto-connect enabled before switching to Client mode.</p>
+        </div>
+        {{else}}
+        <p class="text-muted mt-3">No networks configured. Add networks in the section below to enable Client mode.</p>
+        {{end}}
+        {{end}}
+        
         <p class="text-muted mt-2">Last updated: {{.Timestamp.Format "2006-01-02 15:04:05"}}</p>
     </article>
 </div>
